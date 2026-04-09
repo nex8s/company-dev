@@ -123,7 +123,9 @@ describe("company portability routes", () => {
       .send({ include: { company: true, agents: true, projects: true } });
 
     expect(res.status).toBe(200);
-    expect(res.body.rootPath).toBe("paperclip");
+    expect(mockCompanyPortabilityService.previewExport).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", {
+      include: { company: true, agents: true, projects: true },
+    });
   });
 
   it("rejects replace collision strategy on CEO-safe import routes", async () => {
