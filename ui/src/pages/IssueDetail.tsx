@@ -76,6 +76,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatIssueActivityAction } from "@/lib/activity-format";
+import { buildIssuePropertiesPanelKey } from "../lib/issue-properties-panel-key";
 import { resolveIssueChatTranscriptRuns } from "../lib/issueChatTranscriptRuns";
 import {
   Activity as ActivityIcon,
@@ -658,13 +659,10 @@ export function IssueDetail() {
     () => [...rawChildIssues].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [rawChildIssues],
   );
-  const childIssuesPanelKey = useMemo(
-    () => childIssues.map((child) => `${child.id}:${String(child.updatedAt)}`).join("|"),
-    [childIssues],
+  const issuePanelKey = useMemo(
+    () => buildIssuePropertiesPanelKey(issue ?? null, childIssues),
+    [childIssues, issue],
   );
-  const issuePanelKey = issue
-    ? `${issue.id}:${String(issue.updatedAt)}:${childIssuesPanelKey}`
-    : "";
   const openNewSubIssue = useCallback(() => {
     if (!issue) return;
     openNewIssue({
@@ -1045,10 +1043,6 @@ export function IssueDetail() {
           });
         }
       }
-      queryClient.setQueryData<Issue | undefined>(
-        queryKeys.issues.detail(issueId!),
-        (current) => current ? { ...current, updatedAt: comment.createdAt } : current,
-      );
       queryClient.setQueryData<InfiniteData<IssueComment[], string | null>>(
         queryKeys.issues.comments(issueId!),
         (current) => current ? {
