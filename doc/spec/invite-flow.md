@@ -162,6 +162,127 @@ stateDiagram-v2
   OpeningCompany --> RedirectToBoard: navigate to board
 ```
 
+## Sequence Diagrams
+
+### Human Invite Creation And First Acceptance
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Board as Board user
+  participant Settings as Company Invites UI
+  participant API as Access routes
+  participant Invites as invites table
+  actor Invitee as Invite recipient
+  participant Landing as Invite landing UI
+  participant Auth as Auth session
+  participant Join as join_requests table
+
+  Board->>Settings: Choose role and click Create invite
+  Settings->>API: POST /api/companies/:companyId/invites
+  API->>Invites: Insert active invite
+  API-->>Settings: inviteUrl + metadata
+
+  Invitee->>Landing: Open invite URL
+  Landing->>API: GET /api/invites/:token
+  API->>Invites: Load active invite
+  API-->>Landing: Invite summary
+
+  alt Authenticated mode and no session
+    Landing->>Auth: Sign up or sign in
+    Auth-->>Landing: Session established
+  end
+
+  Landing->>API: POST /api/invites/:token/accept (requestType=human)
+  API->>Join: Look for reusable human join request
+  alt Reusable pending or approved request exists
+    API->>Invites: Mark invite accepted
+    API-->>Landing: Existing join request status
+  else No reusable request exists
+    API->>Invites: Mark invite accepted
+    API->>Join: Insert pending_approval join request
+    API-->>Landing: New pending_approval join request
+  end
+```
+
+### Human Approval And Reload Path
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Invitee as Invite recipient
+  participant Landing as Invite landing UI
+  participant API as Access routes
+  participant Join as join_requests table
+  actor Approver as Company admin
+  participant Queue as Access queue UI
+  participant Membership as company_memberships + grants
+
+  Invitee->>Landing: Reload consumed invite URL
+  Landing->>API: GET /api/invites/:token
+  API->>Join: Load join request by inviteId
+  API-->>Landing: joinRequestStatus + joinRequestType
+
+  alt joinRequestStatus = pending_approval
+    Landing-->>Invitee: Show waiting-for-approval panel
+    Approver->>Queue: Review request in Company Settings -> Access
+    Queue->>API: POST /companies/:companyId/join-requests/:requestId/approve
+    API->>Membership: Ensure membership and grants
+    API->>Join: Mark join request approved
+    Invitee->>Landing: Refresh after approval
+    Landing->>API: GET /api/invites/:token
+    API->>Join: Reload approved join request
+    API-->>Landing: approved status
+    Landing-->>Invitee: Opening company and redirect
+  else joinRequestStatus = rejected
+    Landing-->>Invitee: Show rejected error panel
+  else joinRequestStatus = approved but membership missing
+    Landing-->>Invitee: Fall through to consumed/unavailable state
+  end
+```
+
+### Agent Invite Approval, Claim, And Replay
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Board as Board user
+  participant Settings as Company Settings UI
+  participant API as Access routes
+  participant Invites as invites table
+  actor Gateway as OpenClaw gateway agent
+  participant Join as join_requests table
+  actor Approver as Company admin
+  participant Agents as agents table
+  participant Keys as agent_api_keys table
+
+  Board->>Settings: Generate OpenClaw invite prompt
+  Settings->>API: POST /api/companies/:companyId/openclaw-invite-prompt
+  API->>Invites: Insert active agent invite
+  API-->>Settings: Prompt text + invite token
+
+  Gateway->>API: POST /api/invites/:token/accept (agent, openclaw_gateway)
+  API->>Invites: Mark invite accepted
+  API->>Join: Insert pending_approval join request + claimSecretHash
+  API-->>Gateway: requestId + claimSecret + claimApiKeyPath
+
+  Approver->>API: POST /companies/:companyId/join-requests/:requestId/approve
+  API->>Agents: Create agent + membership + grants
+  API->>Join: Mark request approved and store createdAgentId
+
+  Gateway->>API: POST /api/join-requests/:requestId/claim-api-key (claimSecret)
+  API->>Keys: Create initial API key
+  API->>Join: Mark claim secret consumed
+  API-->>Gateway: Plaintext Paperclip API key
+
+  opt Replay accepted invite for updated gateway defaults
+    Gateway->>API: POST /api/invites/:token/accept again
+    API->>Join: Reuse existing approved or pending request
+    API->>Agents: Update approved agent adapter config when applicable
+    API-->>Gateway: Updated join request payload
+  end
+```
+
 ## Notes
 
 - `GET /api/invites/:token` treats `revoked` and `expired` invites as unavailable. Accepted invites remain resolvable when they already have a linked join request, and the summary now includes `joinRequestStatus` plus `joinRequestType`.
