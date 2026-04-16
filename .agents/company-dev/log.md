@@ -137,3 +137,31 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 5. **Trial state** — stored as `text` with default `'trial'`. Valid values documented as `trial | active | expired | paused` in the `TrialState` type alias. A-04's Getting Started state machine will drive transitions; A-02 only establishes the column.
 
 **Notes for next task (A-03):** Agent role seeding — "Naive (CEO)" seeded on company creation + factory for hiring dept agents (Engineering / Marketing / Operations / Sales / Support). Blocked-by: A-02 (just merged locally). Will land the seed logic in `packages/plugin-company/src/agents/factory.ts`; tests will spin up embedded-postgres via the same harness as A-02, apply migrations, create a company, and assert CEO seed + hireAgent tagging.
+
+---
+
+## B-04 · 2026-04-17 02:10 · agent-B
+**Commit:** fd3da93b on `feat/new-features` (pushed to origin)
+**Files:** packages/plugin-store/package.json (new), packages/plugin-store/tsconfig.json (new), packages/plugin-store/vitest.config.ts (new), packages/plugin-store/src/index.ts (new — `registerPlugin`), packages/plugin-store/src/schema.ts (new — `store_templates` table), packages/plugin-store/src/types.ts (new — `SeedTemplate`, `TemplateEmployee`, `StoreTemplateRecord`), packages/plugin-store/src/repo.ts (new — `InMemoryStoreTemplatesRepository`, `listTemplates`), packages/plugin-store/src/repo.test.ts (new — 8 tests), packages/plugin-store/src/seeds/{faceless-youtube,smma,youtube-long-form,b2b-outbound-machine,dev-agency,devops-monitoring-ops,index}.ts (7 new), .agents/company-dev/checks/gate-B-04.sh (new)
+**Tests:** repo.test.ts › loads exactly 6 seed templates (pass), › seeds each of the 6 expected slugs (pass), › every seed has the required shape (pass), › listTemplates filters by category (pass), › listTemplates filters by kind (pass), › listTemplates combines category + kind filters (pass), › getBySlug returns a loaded template (pass), › rejects duplicate seed slugs on a second loadSeeds (pass)
+**Gate output (tail):**
+```
+> @paperclipai/plugin-store@0.1.0 test:run
+> vitest run
+ RUN  v3.2.4 /Users/deusnexus/company-dev-b/packages/plugin-store
+ ✓ src/repo.test.ts (8 tests) 11ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Duration  422ms
+▶ gate-B-04: all checks passed
+```
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: 263 files total · 262 passed, 1 failed · 1492 tests passed, 1 failed, 1 skipped, wall 138s.
+  - Single failure: `agent-permissions-routes.test.ts > redacts agent detail for authenticated company members without agent admin permission` — 5037ms timeout in full suite, passes cleanly in **12s isolated (17/17 tests, every subtest ≤800ms)**.
+  - Same class/signature as the three orchestrator-approved environmental flakes (`cli-auth-routes`, `issue-feedback-routes`, `openclaw-invite-prompt-route`) — parallel suite contention on embedded-postgres. Requesting the orchestrator add this one to the approved list (see `questions/orchestrator.md`).
+  - This B-04 change is plugin-store only; zero touchpoints on server/agent-permissions code.
+
+**Seed sourcing:** The first 3 (`faceless-youtube`, `smma`, `youtube-long-form`) are fresh copy in my own voice. The last 3 (`b2b-outbound-machine`, `dev-agency`, `devops-monitoring-ops`) adapt the agent role definitions from `~/Downloads/*-paperclip-config.json` (renaming generic "Engineer" slots to `Backend Engineer` / `Frontend Engineer` / `Integrations Engineer` in dev-agency; title-casing responsibilities). Summaries and titles are written fresh; no marketing copy copied from the reference source.
+
+**Notes for next task:** B-05 (Store "Get" flow — install creates a new company + agents + skills in one transaction) depends on A-03 (agent seeding). B-06 (Store publishing — receives A-10 payload) depends on A-10. Neither is merged yet. Likely next: B-07 (Stripe — depends on A-07, not merged) or B-09/B-10/B-11/B-12 (provider interface stubs — all only blocked by A-01, which has merged). Will pick one of the provider stubs if nothing unblocks more meaningfully.

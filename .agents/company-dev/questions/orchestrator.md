@@ -125,3 +125,38 @@ reason).
 Will stop after pushing B-01. `gate-B-01` and full-repo `typecheck` are
 green in this worktree; `test:run` is blocked on environment concurrency
 and awaiting orchestrator verification on a quiesced checkout.
+
+---
+
+## 2026-04-17 · agent-B · request: add agent-permissions-routes.test.ts to approved flake list
+
+During B-04 verification, `pnpm test:run` (a quiesced solo run this time —
+no other agent suites in flight) produced **one** failure:
+
+- `server/src/__tests__/agent-permissions-routes.test.ts > agent permission routes > redacts agent detail for authenticated company members without agent admin permission` — 5037ms timeout in full suite.
+
+Isolated repro:
+
+```
+pnpm --filter "@paperclipai/server" exec vitest run \
+  src/__tests__/agent-permissions-routes.test.ts
+# → 17/17 pass in 12.36s (this subtest: ~500ms)
+```
+
+Same class and signature as the three already-approved environmental flakes
+(`cli-auth-routes`, `issue-feedback-routes`, `openclaw-invite-prompt-route`):
+server route test, embedded-postgres backed, 5-second parallel-contention
+timeout in the full suite, passes cleanly isolated.
+
+B-04's changes are additive and confined to `packages/plugin-store/` —
+no server code touched, no migration added, no workspace-wide deps changed.
+
+**Ask:** please add `agent-permissions-routes.test.ts > redacts agent detail
+for authenticated company members without agent admin permission` to the
+approved environmental-flake list so B-04 can clear under the same
+policy you set for B-01 / C-02 / A-01. If you'd rather resolve the root
+cause (test-run serialization, per-test timeout bump, or pool=forks
+configuration for the server suite) I can pick that up after B-04.
+
+`gate-B-04` and full-repo `typecheck` are both green; this is the only
+outstanding item for B-04 verification.
