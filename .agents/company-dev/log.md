@@ -92,7 +92,7 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 ---
 
 ## B-04 · 2026-04-17 02:10 · agent-B
-**Commit:** (pending push) on `feat/new-features`
+**Commit:** fd3da93b on `feat/new-features` (pushed to origin)
 **Files:** packages/plugin-store/package.json (new), packages/plugin-store/tsconfig.json (new), packages/plugin-store/vitest.config.ts (new), packages/plugin-store/src/index.ts (new — `registerPlugin`), packages/plugin-store/src/schema.ts (new — `store_templates` table), packages/plugin-store/src/types.ts (new — `SeedTemplate`, `TemplateEmployee`, `StoreTemplateRecord`), packages/plugin-store/src/repo.ts (new — `InMemoryStoreTemplatesRepository`, `listTemplates`), packages/plugin-store/src/repo.test.ts (new — 8 tests), packages/plugin-store/src/seeds/{faceless-youtube,smma,youtube-long-form,b2b-outbound-machine,dev-agency,devops-monitoring-ops,index}.ts (7 new), .agents/company-dev/checks/gate-B-04.sh (new)
 **Tests:** repo.test.ts › loads exactly 6 seed templates (pass), › seeds each of the 6 expected slugs (pass), › every seed has the required shape (pass), › listTemplates filters by category (pass), › listTemplates filters by kind (pass), › listTemplates combines category + kind filters (pass), › getBySlug returns a loaded template (pass), › rejects duplicate seed slugs on a second loadSeeds (pass)
 **Gate output (tail):**
