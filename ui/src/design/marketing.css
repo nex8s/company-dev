@@ -44,6 +44,26 @@
     radial-gradient(ellipse 30% 30% at 5% 60%, black 5%, transparent 45%);
 }
 
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-blink {
+    animation: none;
+  }
+}
+
 .mask-cloud-right {
   -webkit-mask-image:
     radial-gradient(ellipse 55% 55% at 90% 95%, black 25%, transparent 65%),

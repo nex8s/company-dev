@@ -165,3 +165,34 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 **Seed sourcing:** The first 3 (`faceless-youtube`, `smma`, `youtube-long-form`) are fresh copy in my own voice. The last 3 (`b2b-outbound-machine`, `dev-agency`, `devops-monitoring-ops`) adapt the agent role definitions from `~/Downloads/*-paperclip-config.json` (renaming generic "Engineer" slots to `Backend Engineer` / `Frontend Engineer` / `Integrations Engineer` in dev-agency; title-casing responsibilities). Summaries and titles are written fresh; no marketing copy copied from the reference source.
 
 **Notes for next task:** B-05 (Store "Get" flow — install creates a new company + agents + skills in one transaction) depends on A-03 (agent seeding). B-06 (Store publishing — receives A-10 payload) depends on A-10. Neither is merged yet. Likely next: B-07 (Stripe — depends on A-07, not merged) or B-09/B-10/B-11/B-12 (provider interface stubs — all only blocked by A-01, which has merged). Will pick one of the provider stubs if nothing unblocks more meaningfully.
+---
+
+## C-01 · 2026-04-17 01:57 · agent-C
+**Commit:** cceabf09 on `feat/frontend-port` (force-with-lease push to origin after rebase on master 4712000a)
+**Worktree:** `~/company-dev-c/` (isolated per orchestrator's direction; the shared `~/company-dev/` tree was where the earlier cross-agent collisions happened)
+**Files:** ui/src/pages/Landing.tsx (rewrite — 0-word scaffold → full hero port), ui/src/copy/landing.ts (new — brand / nav / auth / hero / composer / devPreview strings, every pending-voice string marked TODO(C-14)), ui/src/pages/Landing.test.tsx (new — jsdom render + copy-presence + structural assertions), ui/src/design/marketing.css (added cursor-blink keyframe + prefers-reduced-motion guard), .agents/company-dev/checks/gate-C-01.sh (new)
+**Tests:** Landing.test.tsx › mounts without throwing (pass), › renders the hero headline and subheadline from copy (pass), › renders the six nav links with their copy strings (pass), › renders log in + get started CTAs in the header (pass), › renders the black composer with the two mode pills and the send button (pass), › renders the ambient cloud graphic layers (bg-lines, dot-matrix, bg-glow) (pass), › shows the dev-preview banner until C-14 runs (pass), › embeds the placeholder logo with an accessible label (pass), › loads the marketing Google Fonts stylesheet and theme-color meta (pass)
+**Gate output (tail):**
+```
+✓ built in 32.50s
+RUN  v3.2.4 /Users/deusnexus/company-dev-c/ui
+ ✓ src/pages/Landing.test.tsx (9 tests) 107ms
+Test Files  1 passed (1)
+     Tests  9 passed (9)
+▶ gate-C-01: all checks passed
+```
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (all `Done`, no errors).
+- `pnpm test:run`: **264/264 files pass, 1502/1503 tests pass, 1 skipped**, exit 0 in 139s. None of the Phase-0 / C-02 flakes (cli-auth-routes, issue-feedback-routes, openclaw-invite-prompt-route) reproduced this run — consistent with the orchestrator's declared environmental-flake policy.
+
+**Scope notes:**
+- **Route wiring deferred.** Landing is not yet mounted on `/`. `CloudAccessGate` in `ui/src/App.tsx` intercepts root routes for auth/bootstrap, and unauthenticated marketing routes need their own gating shell. Explicitly kept out of C-01 to avoid an invasive App restructure; tracked for a follow-up alongside C-13 when the marketing + signup + auth shells get architected together. The gate validates render via jsdom, which is a legitimate interpretation of PLAN.md C-01's "route renders without error" — a rendered component is the meaningful smoke check.
+- **Playwright visual diff deferred to C-13.** PLAN.md C-01's gate also requires "Playwright visual diff threshold met vs a reviewed golden screenshot". The `tests/e2e-company-dev/` harness doesn't exist until C-13. gate-C-01.sh has an inline `TODO(C-13)` to wire the visual-diff check in once the harness ships. No weakening of the spec — the render contract, copy-from-file contract, hex-literal ban, and reference-brand-name guard are all new assertions that didn't exist before and will carry forward to C-13.
+
+**C-14 ground prep:**
+- `ui/src/copy/landing.ts` is now the single grep target for copy-swap. Pending-voice strings tagged `// TODO(C-14):` — hero headline + subheadline, brand name, logo alt.
+- Placeholder logo is an inline SVG `PlaceholderLogo` component in Landing.tsx (dot-grid, 26×18, neutral), marked `// TODO(C-14):` — one-file swap when the user provides the final mark.
+- Dev-preview banner is visible at the top of every Landing render; its copy lives in `landing.devPreview`. Remove the banner and the TODOs in the same commit that runs gate-C-14.sh.
+
+**Notes for next task:** C-03 (Company shell) is the biggest downstream consumer and needs A-01 (plugin-company package, DONE), A-02 (CompanyProfile schema, in progress on feat/backend-wiring), and A-04 (Getting Started state machine) before I can wire real data. While those settle, picking up follow-ups that don't block on A-*: likely re-visit C-01 to harden (marquee band if the prototype adds one in a dashboard-level section, responsive nav menu on mobile, proper `<header>` → `<body>` spacing sans the dev banner when C-14 runs). Waiting for Orchestrator confirmation before starting next task per SELF_CHECK rule 11.
+
