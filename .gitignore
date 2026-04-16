@@ -39,7 +39,8 @@ feedback-export-*
 .claude/settings.local.json
 .paperclip-local/
 /.idea/
-/.agents/
+/.agents/*
+!/.agents/company-dev/
 
 # Doc maintenance cursor
 .doc-review-cursor

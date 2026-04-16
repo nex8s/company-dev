@@ -1,0 +1,1520 @@
+<!--
+aesthetic_dna: Naive/Minimalist-Brutalist SaaS, High-Density Functional Workspace
+ui_paradigm: Multi-view OS shell with nested routing, persistent chrome, Kanban/Grid/Chat modes
+palette: FBF9F6 (Cream), 0A0A0A (Black), F4F2EE (Chat Gray), E5E5E5 (Hairline)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naïve AI OS Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<!-- Using Inter as a robust fallback to achieve the Geist clean-sans look -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                cream: '#FBF9F6',
+                primary: '#0A0A0A',
+                secondary: '#6E6E6E',
+                tertiary: '#A1A1A1',
+                hairline: '#E5E5E5',
+                chatbg: '#F4F2EE',
+                status: {
+                    amber: '#F59E0B',
+                    green: '#10B981',
+                    red: '#EF4444',
+                    pending: '#FEF3C7'
+                }
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                display: ['DotGothic16', 'sans-serif']
+            },
+            boxShadow: {
+                'micro': '0 1px 2px rgba(0,0,0,0.04)',
+                'popover': '0 10px 40px -10px rgba(0,0,0,0.1)'
+            }
+        }
+    }
+}
+</script>
+
+<style>
+    /* Custom Scrollbar & Resets */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #A1A1A1; }
+    
+    body { background-color: #FBF9F6; color: #0A0A0A; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    
+    .pixel-cloud { shape-rendering: crispEdges; }
+    
+    .nav-active { background-color: rgba(0,0,0,0.04); font-weight: 500; }
+    .tab-active { color: #0A0A0A; border-bottom: 2px solid #0A0A0A; }
+    .tab-inactive { color: #6E6E6E; }
+    .tab-inactive:hover { color: #0A0A0A; }
+    
+    /* Kanban Drag Ghosting Simulation */
+    .kanban-card { transition: transform 0.1s ease, box-shadow 0.1s ease; cursor: grab; }
+    .kanban-card:active { cursor: grabbing; transform: scale(0.98); }
+
+    /* Recursive diagram lines */
+    .flow-line::after {
+        content: ''; position: absolute; background: #E5E5E5; z-index: 0;
+    }
+
+    [x-cloak] { display: none !important; }
+
+    /* Hide unselected views */
+    .view, .sub-view { display: none; }
+    .view.show, .sub-view.show { display: flex; }
+</style>
+</head>
+<body class="flex h-screen w-screen text-sm">
+
+<!-- SVG Assets -->
+<svg width="0" height="0" class="hidden">
+    <defs>
+        <g id="cloud-pixel">
+            <path class="pixel-cloud" fill="currentColor" d="M8 6h4v2H8V6zm4-2h4v2h-4V4zm4 2h2v2h-2V6zm2 2h2v2h-2V8zm-2 2h2v2h-2v-2zm-6 2h6v2h-6v-2zm-4-2h4v2H6v-2zm-4-2h4v2H2V8zm0-2h4v2H2V6z"/>
+        </g>
+    </defs>
+</svg>
+
+<!-- GLOBAL CHROME: LEFT SIDEBAR -->
+<aside id="sidebar" class="w-[260px] h-full flex flex-col border-r border-hairline bg-cream z-20 flex-shrink-0">
+    <!-- Top Nav / Switcher -->
+    <div class="px-4 py-4 flex items-center justify-between hover:bg-black/5 cursor-pointer rounded-lg mx-2 mt-2 transition-colors" onclick="togglePopover('company-switcher')">
+        <div class="flex items-center gap-2 relative">
+            <svg class="w-5 h-5 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+            <span class="text-tertiary">/</span>
+            <div class="w-4 h-4 rounded bg-white border border-hairline flex items-center justify-center text-[10px]">🏢</div>
+            <span class="font-medium truncate">Company X</span>
+            <i class="ph ph-caret-up-down text-tertiary text-xs"></i>
+        </div>
+        
+        <!-- Company Switcher Popover -->
+        <div id="company-switcher" class="hidden absolute top-12 left-2 w-64 bg-white border border-hairline rounded-xl shadow-popover p-1 z-50">
+            <button class="w-full text-left px-3 py-2 text-sm flex items-center justify-between rounded-md bg-black/5">
+                <div class="flex items-center gap-2"><div class="w-5 h-5 rounded bg-white border border-hairline flex items-center justify-center text-[10px]">🏢</div> Company X</div>
+                <i class="ph ph-check"></i>
+            </button>
+            <div class="h-px bg-hairline my-1 mx-2"></div>
+            <button class="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-black/5 rounded-md flex items-center gap-2"><i class="ph ph-plus"></i> Add company</button>
+            <button class="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-black/5 rounded-md flex items-center gap-2"><i class="ph ph-storefront"></i> Store</button>
+        </div>
+    </div>
+
+    <!-- Review Pill -->
+    <div class="px-3 mt-1">
+        <button class="w-full bg-primary text-white rounded-full py-1.5 px-3 flex items-center justify-between text-xs hover:bg-gray-800 transition-colors">
+            <div class="flex items-center gap-2">
+                <div class="flex -space-x-1">
+                    <div class="w-4 h-4 rounded-full bg-gray-200 border border-black flex items-center justify-center"><i class="ph-fill ph-check-circle text-[8px] text-primary"></i></div>
+                    <div class="w-4 h-4 rounded-full bg-gray-300 border border-black flex items-center justify-center"><i class="ph-fill ph-code text-[8px] text-primary"></i></div>
+                </div>
+                <span>+2</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-status-amber"></div>
+                <span class="opacity-90">1 review waiting</span>
+                <i class="ph ph-caret-up"></i>
+            </div>
+        </button>
+    </div>
+
+    <!-- Main Links -->
+    <nav class="mt-4 px-2 space-y-0.5 flex-1 overflow-y-auto">
+        <a href="#" class="nav-item nav-active flex items-center justify-between px-2 py-1.5 rounded-md text-primary" data-target="view-company-wrapper">
+            <div class="flex items-center gap-2"><i class="ph ph-house text-lg"></i> Company</div>
+            <i class="ph ph-caret-right text-xs text-tertiary"></i>
+        </a>
+        <a href="#" class="nav-item flex items-center justify-between px-2 py-1.5 rounded-md text-secondary hover:bg-black/5 transition-colors" data-target="view-tasks">
+            <div class="flex items-center gap-2"><i class="ph ph-kanban text-lg"></i> Tasks</div>
+            <span class="bg-black/5 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-medium">1</span>
+        </a>
+        <a href="#" class="nav-item flex items-center gap-2 px-2 py-1.5 rounded-md text-secondary hover:bg-black/5 transition-colors" data-target="view-drive">
+            <i class="ph ph-database text-lg"></i> Drive
+        </a>
+        <a href="#" class="nav-item flex items-center gap-2 px-2 py-1.5 rounded-md text-secondary hover:bg-black/5 transition-colors" data-target="view-store">
+            <i class="ph ph-storefront text-lg"></i> Store
+        </a>
+
+        <!-- APPS -->
+        <div class="mt-6">
+            <div class="px-2 text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-2">Apps</div>
+            <a href="#" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-black/5 group">
+                <div class="w-6 h-6 rounded bg-black/5 flex items-center justify-center text-secondary border border-hairline group-hover:border-black/20"><i class="ph ph-globe"></i></div>
+                <div class="flex flex-col -gap-1 overflow-hidden">
+                    <span class="text-xs text-primary truncate">Landing Page</span>
+                    <span class="text-[10px] text-tertiary truncate">naive-landing-page-1b2491.vercel.app</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- TEAM -->
+        <div class="mt-6">
+            <div class="px-2 text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-2">Team</div>
+            <!-- CEO -->
+            <a href="#" class="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 group cursor-pointer" data-target="view-team-ceo">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+                    <span class="text-xs text-primary">Naive (CEO)</span>
+                </div>
+                <span class="text-[10px] text-tertiary">2d</span>
+            </a>
+            
+            <!-- Groups -->
+            <div class="collapsible mt-1">
+                <button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 text-xs text-secondary group toggle-btn" onclick="toggleSection(this)">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-caret-right text-[10px] transition-transform"></i>
+                        <span class="uppercase tracking-wider text-[10px] font-semibold text-tertiary">Engineering</span>
+                    </div>
+                    <div class="flex items-center gap-1.5"><span class="bg-black/5 px-1.5 py-0.5 rounded text-[9px]">1</span></div>
+                </button>
+                <div class="hidden flex-col pl-6 pr-2 py-1 space-y-1">
+                    <a href="#" class="flex items-center justify-between py-1 text-xs text-primary hover:bg-black/5 rounded-md px-2" data-target="view-team-engineer">
+                        <span class="truncate">Landing Page Engineer</span>
+                        <span class="text-[10px] text-tertiary flex-shrink-0">2d</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="collapsible">
+                <button class="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 text-xs text-secondary group toggle-btn" onclick="toggleSection(this)">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-caret-right text-[10px] transition-transform"></i>
+                        <span class="uppercase tracking-wider text-[10px] font-semibold text-tertiary">Marketing</span>
+                    </div>
+                    <div class="flex items-center gap-1.5"><span class="bg-black/5 px-1.5 py-0.5 rounded text-[9px] bg-red-100 text-red-600">2</span></div>
+                </button>
+                <div class="hidden flex-col pl-6 pr-2 py-1 space-y-1">
+                    <a href="#" class="flex flex-col py-1 text-xs text-primary hover:bg-black/5 rounded-md px-2">
+                        <span class="truncate">Growth Marketer</span>
+                        <span class="text-[10px] text-tertiary truncate">Starting work on the Go-to-...</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="collapsible"><button class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-black/5 text-xs text-secondary"><i class="ph ph-caret-right text-[10px]"></i><span class="uppercase tracking-wider text-[10px] font-semibold text-tertiary">Operations</span></button></div>
+            <div class="collapsible"><button class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-black/5 text-xs text-secondary"><i class="ph ph-caret-right text-[10px]"></i><span class="uppercase tracking-wider text-[10px] font-semibold text-tertiary">Sales</span></button></div>
+        </div>
+
+        <!-- Getting Started Panel -->
+        <div class="mt-6 mx-2 border border-black/10 rounded-lg bg-white overflow-hidden shadow-micro">
+            <button class="w-full flex items-center justify-between px-3 py-2 bg-black/5 text-xs font-semibold" onclick="toggleSection(this)">
+                <span>1/7 Getting Started</span>
+                <i class="ph ph-caret-up text-[10px]"></i>
+            </button>
+            <div class="hidden p-2 space-y-2 text-[11px] text-secondary">
+                <div class="flex items-start gap-2 group"><div class="w-3 h-3 rounded-sm border border-black/20 mt-0.5 flex-shrink-0"></div><span class="flex-1">Incorporate Company</span><i class="ph ph-info opacity-0 group-hover:opacity-100 cursor-pointer"></i></div>
+                <div class="flex items-start gap-2 group"><div class="w-3 h-3 rounded-sm border border-black/20 mt-0.5 flex-shrink-0"></div><span class="flex-1">Connect or buy domain</span><i class="ph ph-info opacity-0 group-hover:opacity-100 cursor-pointer"></i></div>
+                <div class="flex items-start gap-2 bg-status-green/10 p-1 -mx-1 rounded line-through text-status-green opacity-70 group"><div class="w-3 h-3 rounded-sm border-none bg-status-green text-white flex items-center justify-center mt-0.5 flex-shrink-0"><i class="ph-bold ph-check text-[8px]"></i></div><span class="flex-1">Deploy first website</span></div>
+                <!-- Progress bar -->
+                <div class="h-1 w-full bg-black/5 rounded-full mt-2 overflow-hidden"><div class="h-full bg-status-green w-[15%]"></div></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Bottom Actions & User Profile -->
+    <div class="p-4 border-t border-hairline bg-cream space-y-3">
+        <div class="flex items-center justify-between text-xs px-2">
+            <div class="flex items-center gap-1.5 text-secondary"><div class="w-1.5 h-1.5 rounded-full bg-status-amber"></div> Trial · 5d left</div>
+            <a href="#" class="font-medium hover:underline text-primary" data-target="view-upgrade">Subscribe →</a>
+        </div>
+        
+        <div class="relative">
+            <button class="w-full flex items-center justify-between hover:bg-black/5 p-2 rounded-lg transition-colors text-left" onclick="togglePopover('user-menu')">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-medium border border-black/10">NI</div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-medium leading-tight">Nicole Mayer</span>
+                        <span class="text-xs text-tertiary">15.25 credits</span>
+                    </div>
+                </div>
+                <i class="ph ph-caret-up text-tertiary"></i>
+            </button>
+            
+            <!-- User Popover -->
+            <div id="user-menu" class="hidden absolute bottom-14 left-0 w-full min-w-[240px] bg-white border border-hairline rounded-xl shadow-popover p-1.5 z-50">
+                <div class="px-3 py-2 border-b border-hairline mb-1">
+                    <p class="text-xs text-secondary truncate">nicolemayerwork@gmail.com</p>
+                    <p class="text-sm font-medium mt-0.5">Credits 15.25</p>
+                </div>
+                <button class="w-full text-left px-3 py-2 text-sm bg-primary text-white hover:bg-gray-800 rounded-md mb-1 transition-colors" data-target="view-upgrade">Upgrade Plan</button>
+                <button class="w-full text-left px-3 py-1.5 text-sm hover:bg-black/5 rounded-md flex items-center gap-2" onclick="document.getElementById('topup-modal').classList.remove('hidden')"><i class="ph ph-plus-circle text-tertiary text-lg"></i> Top Up Credits</button>
+                <button class="w-full text-left px-3 py-1.5 text-sm hover:bg-black/5 rounded-md flex items-center gap-2"><i class="ph ph-smiley text-tertiary text-lg"></i> Use Emoji Icons</button>
+                <button class="w-full text-left px-3 py-1.5 text-sm hover:bg-black/5 rounded-md flex items-center gap-2"><i class="ph ph-gear text-tertiary text-lg"></i> Settings</button>
+                <div class="h-px bg-hairline my-1 mx-2"></div>
+                <button class="w-full text-left px-3 py-1.5 text-sm text-secondary hover:bg-black/5 rounded-md flex items-center gap-2"><i class="ph ph-lifebuoy text-lg"></i> Support</button>
+                <button class="w-full text-left px-3 py-1.5 text-sm text-secondary hover:bg-black/5 rounded-md flex items-center justify-between" data-target="view-upgrade"><span>Sign out</span> <i class="ph ph-arrow-u-up-right"></i></button>
+            </div>
+        </div>
+    </div>
+</aside>
+
+
+<!-- MAIN STAGE MAPPER -->
+<main class="flex-1 h-screen relative bg-white flex flex-col min-w-0" id="main-content">
+    
+    <!-- ========================================== -->
+    <!-- VIEW WRAPPER: COMPANY CONTEXT              -->
+    <!-- ========================================== -->
+    <div id="view-company-wrapper" class="view show flex-col h-full">
+        <!-- Company Header Chrome -->
+        <header class="h-14 border-b border-hairline flex items-center justify-between px-6 bg-cream/50 backdrop-blur-sm sticky top-0 z-10 flex-shrink-0">
+            <div class="flex items-center gap-6 h-full">
+                <!-- Sub Tabs Routing -->
+                <button class="h-full px-1 border-b-2 font-medium tab-btn" data-tabgroup="company" data-tab="co-chat" style="border-color:#0A0A0A; color:#0A0A0A;">Chat</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-btn tab-inactive text-secondary" data-tabgroup="company" data-tab="co-overview">Overview</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-btn tab-inactive text-secondary" data-tabgroup="company" data-tab="co-strategy">Strategy</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-btn tab-inactive text-secondary" data-tabgroup="company" data-tab="co-payments">Payments</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-btn tab-inactive text-secondary" data-tabgroup="company" data-tab="co-settings">Settings</button>
+            </div>
+        </header>
+
+        <!-- SUB-VIEW 1: COMPANY > CHAT -->
+        <div id="co-chat" class="sub-view show company flex-col h-full overflow-hidden relative bg-white">
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 pb-40">
+                <!-- Chat Messages -->
+                <div class="flex flex-col gap-4">
+                    <!-- Right Message -->
+                    <div class="flex justify-end pr-4">
+                        <div class="max-w-[70%]">
+                            <div class="text-[11px] text-secondary mb-1 text-right flex justify-end gap-1 items-center">
+                                <a href="#" class="text-blue-600 hover:underline">Growth Marketer</a>
+                                <span class="text-tertiary">·</span>
+                                <span class="text-tertiary">12:15</span>
+                            </div>
+                            <div class="bg-chatbg p-3.5 rounded-2xl rounded-tr-sm text-sm border border-black/5 shadow-micro">
+                                Got it — working on "Create GTM Plan for company x" now.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Left System Message -->
+                    <div class="flex items-end gap-2 pl-4">
+                        <div class="w-7 h-7 rounded-full bg-cream border border-hairline flex items-center justify-center flex-shrink-0 mb-1">
+                            <svg class="w-4 h-4 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+                        </div>
+                        <div class="max-w-[70%]">
+                            <div class="text-[11px] text-secondary mb-1 flex items-center gap-1">
+                                <span class="font-medium text-primary">Naive</span>
+                                <span class="text-tertiary">· via check-in ·</span>
+                                <span class="text-tertiary">12:18</span>
+                            </div>
+                            <div class="bg-white border border-hairline shadow-micro p-3.5 rounded-2xl rounded-tl-sm text-sm">
+                                Growth Marketer hit a transient server issue while working on the first blog post. I've restarted them — they'll pick up where they left off on their next heartbeat.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Left System Message -->
+                    <div class="flex items-end gap-2 pl-4">
+                        <div class="w-7 h-7 rounded-md opacity-0 flex-shrink-0"></div>
+                        <div class="max-w-[70%]">
+                            <div class="bg-white border border-hairline shadow-micro p-3.5 rounded-2xl text-sm">
+                                I'll check the Growth Marketer's status and get them back on track.
+                            </div>
+                            <div class="text-[10px] text-tertiary mt-1 ml-2">12:18</div>
+                        </div>
+                    </div>
+
+                     <!-- Left System Message -->
+                     <div class="flex items-end gap-2 pl-4">
+                        <div class="w-7 h-7 rounded-md bg-cream border border-hairline flex items-center justify-center flex-shrink-0 mb-1">
+                            <svg class="w-4 h-4 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+                        </div>
+                        <div class="max-w-[70%]">
+                            <div class="text-[11px] text-secondary mb-1 flex items-center gap-1">
+                                <span class="font-medium text-primary">Naive</span>
+                                <span class="text-tertiary">· via check-in ·</span>
+                                <span class="text-tertiary">12:21</span>
+                            </div>
+                            <div class="bg-white border border-hairline shadow-micro p-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed">
+                                Growth Marketer is back online. The server restart was a transient issue — the agent will retry automatically on its next heartbeat. Their content calendar is in review, and they have two more tasks queued (GTM plan and first blog post).
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Left System Message -->
+                    <div class="flex items-end gap-2 pl-4">
+                        <div class="w-7 h-7 rounded-md bg-cream border border-hairline flex items-center justify-center flex-shrink-0 mb-1">
+                            <svg class="w-4 h-4 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+                        </div>
+                        <div class="max-w-[70%]">
+                            <div class="text-[11px] text-secondary mb-1 flex items-center gap-1">
+                                <span class="font-medium text-primary">Naive</span>
+                                <span class="text-tertiary">· via check-in ·</span>
+                                <span class="text-tertiary">12:23</span>
+                            </div>
+                            <div class="bg-white border border-hairline shadow-micro p-3.5 rounded-2xl rounded-tl-sm text-sm">
+                                Landing Page Engineer is back online — the server restart caused a transient error. They'll automatically retry their task on the next heartbeat.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating Review Pill -->
+                <div class="flex justify-center mt-8">
+                    <button class="bg-primary text-white rounded-full py-1.5 px-3.5 flex items-center gap-3 text-xs shadow-lg hover:bg-gray-800 transition-transform hover:-translate-y-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <div class="flex -space-x-1"><div class="w-4 h-4 rounded-full bg-gray-200 border border-black"></div><div class="w-4 h-4 rounded-full bg-gray-300 border border-black"></div></div>
+                            <span>+2</span>
+                        </div>
+                        <div class="w-px h-3 bg-white/30"></div>
+                        <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-status-amber animate-pulse"></div> 1 review waiting</div>
+                        <i class="ph ph-caret-up text-tertiary"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Composer Sticky Bottom -->
+            <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-12 flex flex-col items-center">
+                <div class="w-full max-w-3xl relative">
+                    <div class="bg-white border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] rounded-3xl flex items-center p-2 pl-4 pr-3">
+                        <button class="p-1.5 text-secondary hover:text-primary transition-colors"><i class="ph ph-plus text-xl"></i></button>
+                        <input type="text" placeholder="Ask a follow-up or start a new plan… · Type @ to mention a teammate" class="flex-1 bg-transparent border-none outline-none px-3 text-sm placeholder:text-tertiary">
+                        <button class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-gray-800 shrink-0"><i class="ph ph-arrow-up font-bold"></i></button>
+                    </div>
+                    
+                    <!-- Tool Strip -->
+                    <div class="mt-4 flex flex-col items-center gap-2">
+                        <span class="text-[10px] uppercase font-semibold tracking-wider text-tertiary">Connect your tools to Naive</span>
+                        <div class="flex items-center gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                            <i class="ph-fill ph-github-logo text-xl hover:text-black cursor-pointer"></i>
+                            <i class="ph-fill ph-google-logo text-xl hover:text-blue-500 cursor-pointer"></i>
+                            <i class="ph-fill ph-figma-logo text-xl hover:text-pink-500 cursor-pointer"></i>
+                            <i class="ph-fill ph-twitter-logo text-xl hover:text-blue-400 cursor-pointer"></i>
+                            <i class="ph-fill ph-linkedin-logo text-xl hover:text-blue-700 cursor-pointer"></i>
+                            <i class="ph-fill ph-slack-logo text-xl hover:text-purple-600 cursor-pointer"></i>
+                            <span class="text-xs text-tertiary ml-2 border border-hairline rounded px-1.5 py-0.5">Notion</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB-VIEW 2: COMPANY > OVERVIEW -->
+        <div id="co-overview" class="sub-view company flex-col h-full overflow-y-auto bg-[#FBF9F6] p-8 gap-6">
+            <!-- Back link hidden since we are in Company context but request mentions it, let's add it visually mapping to Strategy later or just a breadcrumb -->
+            
+            <!-- Hero Card -->
+            <div class="bg-white border border-hairline p-6 rounded-2xl shadow-micro flex justify-between items-start">
+                <div class="flex gap-4 items-start max-w-2xl">
+                    <div class="w-16 h-16 rounded-xl bg-gray-100 border border-hairline flex items-center justify-center text-xl font-display uppercase font-bold tracking-widest text-primary">CO</div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <h1 class="font-display text-2xl tracking-wide">company x</h1>
+                            <span class="bg-status-amber text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active</span>
+                            <span class="flex items-center gap-1.5 text-xs text-secondary"><div class="w-2 h-2 rounded-full bg-status-green"></div> Online</span>
+                        </div>
+                        <p class="text-sm text-secondary leading-relaxed">An AI-powered newsletter business focused on content creation, audience growth, and monetization through subscriptions and sponsorships.</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="border border-hairline bg-white hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors" data-tabgroup="company" data-tab="co-settings">Configure</button>
+                    <button class="bg-primary text-white hover:bg-gray-800 px-4 py-2 rounded-full text-sm font-medium transition-colors" data-tabgroup="company" data-tab="co-chat">Chat</button>
+                </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-white border border-hairline rounded-xl p-4 flex flex-col gap-1 shadow-micro">
+                    <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Team</span>
+                    <span class="text-2xl font-medium tracking-tight">6 <span class="text-base text-secondary font-normal">/ 0 working</span></span>
+                </div>
+                <div class="bg-white border border-hairline rounded-xl p-4 flex flex-col gap-1 shadow-micro">
+                    <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Tasks</span>
+                    <span class="text-2xl font-medium tracking-tight">0 <span class="text-base text-secondary font-normal">/ 4 open · 0 blocked</span></span>
+                </div>
+                <div class="bg-white border border-hairline rounded-xl p-4 flex flex-col gap-1 shadow-micro">
+                    <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Credits</span>
+                    <span class="text-2xl font-medium tracking-tight">$15.25 <span class="text-base text-secondary font-normal">/ $4.75 spent</span></span>
+                </div>
+                <div class="bg-white border border-hairline rounded-xl p-4 flex flex-col gap-1 shadow-micro">
+                    <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Approvals</span>
+                    <span class="text-2xl font-medium tracking-tight">0 <span class="text-base text-secondary font-normal">/ 0 stale</span></span>
+                </div>
+            </div>
+
+            <!-- Financials -->
+            <div class="grid grid-cols-2 gap-4 h-64">
+                <!-- Stripe Empty -->
+                <div class="bg-white border border-hairline rounded-xl flex flex-col items-center justify-center text-center p-6 shadow-micro hover:border-black/20 transition-colors cursor-pointer group">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-3"><i class="ph-fill ph-credit-card text-2xl"></i></div>
+                    <h3 class="font-medium text-primary mb-1">Connect Stripe to see revenue data</h3>
+                    <span class="text-sm text-secondary group-hover:underline decortaion-tertiary underline-offset-2">Go to Connections</span>
+                </div>
+                <!-- Usage -->
+                <div class="bg-white border border-hairline rounded-xl p-5 shadow-micro flex flex-col">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider block mb-1">Spending</span>
+                            <span class="text-2xl font-medium">$4.75</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="border border-hairline rounded px-2 py-1 text-xs text-secondary flex items-center gap-1 hover:bg-black/5">Last 60 min <i class="ph ph-caret-down"></i></button>
+                            <button class="border border-hairline rounded px-2 py-1 text-xs text-secondary flex items-center gap-1 hover:bg-black/5">Minute <i class="ph ph-caret-down"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col justify-end gap-3">
+                        <div class="text-xs text-tertiary text-center w-full pb-4">No spending data in this window</div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-secondary"><span>Breakdown</span></div>
+                            <div class="h-1.5 w-full bg-black/5 rounded-full overflow-hidden flex"><div class="h-full bg-primary w-full"></div></div>
+                            <div class="flex items-center gap-2 mt-2 text-xs text-secondary"><div class="w-2 h-2 rounded-full bg-primary"></div> Chat Tokens $4.75</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lists Area -->
+            <div class="grid grid-cols-2 gap-8 mt-4">
+                <div>
+                    <div class="flex items-center justify-between mb-4 border-b border-hairline pb-2">
+                        <h3 class="text-sm font-semibold flex items-center gap-2">TEAM <span class="bg-black/5 px-1.5 py-0.5 rounded text-[10px] font-normal">6</span></h3>
+                        <a href="#" class="text-xs text-tertiary hover:text-primary transition-colors">View all</a>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <span class="text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-2 block">Engineering</span>
+                            <div class="flex items-center justify-between bg-white border border-hairline p-2.5 rounded-lg shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-md bg-cream flex items-center justify-center border border-hairline"><i class="ph ph-user text-tertiary"></i></div>
+                                    <span class="text-sm font-medium">Landing Page Engineer</span>
+                                </div>
+                                <span class="border border-hairline px-2 py-1 rounded text-xs text-secondary bg-cream">Team Member</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-4 border-b border-hairline pb-2">
+                        <h3 class="text-sm font-semibold flex items-center gap-2">APPS <span class="bg-black/5 px-1.5 py-0.5 rounded text-[10px] font-normal">1</span></h3>
+                        <a href="#" class="text-xs text-tertiary hover:text-primary transition-colors">View all</a>
+                    </div>
+                    <!-- App Card -->
+                    <div class="flex items-center justify-between bg-white border border-hairline p-3 rounded-lg shadow-sm cursor-pointer hover:border-black/20 group transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-black/5 flex items-center justify-center text-primary border border-hairline"><i class="ph ph-globe text-xl"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium group-hover:underline">Landing Page</span>
+                                <span class="text-xs text-tertiary">naive-landing-page-1b2491.vercel.app</span>
+                            </div>
+                        </div>
+                        <span class="flex items-center gap-1.5 text-xs text-status-green bg-status-green/10 px-2 py-1 rounded border border-status-green/20"><div class="w-1.5 h-1.5 rounded-full bg-status-green"></div> Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB-VIEW 3: COMPANY > STRATEGY -->
+        <div id="co-strategy" class="sub-view company flex-col h-full overflow-y-auto bg-[#FBF9F6] p-8 gap-6">
+            <h2 class="text-lg font-medium border-b border-hairline pb-2">Strategy & Context</h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro flex flex-col gap-2">
+                    <div class="text-[10px] font-semibold text-tertiary uppercase tracking-wider flex items-center gap-2"><i class="ph-fill ph-target"></i> Positioning</div>
+                    <p class="text-sm text-secondary leading-relaxed">A smart AI-assisted newsletter operating at the intersection of media and automated content generation, delivering daily synthesized insights faster than traditional pubs.</p>
+                </div>
+                <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro flex flex-col gap-2">
+                    <div class="text-[10px] font-semibold text-tertiary uppercase tracking-wider flex items-center gap-2"><i class="ph-fill ph-users"></i> Target Audience</div>
+                    <p class="text-sm text-secondary leading-relaxed">Professionals and enthusiasts interested in high-quality, AI-curated newsletter content who value signal over noise.</p>
+                </div>
+            </div>
+
+            <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro flex flex-col gap-2 border-l-4 border-l-primary">
+                <div class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Core Growth Strategy</div>
+                <p class="text-base font-medium text-primary leading-relaxed">Content-first growth: launch with a polished newsletter, grow the subscriber base via organic and outbound channels, monetize through paid tiers and sponsorships.</p>
+            </div>
+
+            <div class="mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold">ACTIVE PLANS</h3>
+                    <a href="#" class="text-xs text-tertiary hover:text-primary">View all</a>
+                </div>
+                <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro flex flex-col gap-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-medium text-lg mb-1 flex items-center gap-2">AI-Powered Newsletter Business Launch <span class="bg-status-amber/10 text-status-amber border border-status-amber/20 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">in progress</span></h4>
+                            <p class="text-sm text-secondary">Standing up the full newsletter business, establishing the platform, configuring the team, and generating initial collateral.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-xs text-tertiary font-medium w-6">0/5</div>
+                        <div class="flex-1 h-1.5 bg-black/5 rounded-full overflow-hidden"><div class="w-[10%] h-full bg-primary rounded-full"></div></div>
+                        <div class="text-xs text-secondary bg-cream border border-hairline px-2 py-0.5 rounded">1 active agent</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <h3 class="text-sm font-semibold mb-4">GOALS</h3>
+                <div class="border border-dashed border-black/20 bg-white/50 rounded-xl p-10 flex flex-col items-center justify-center text-center gap-4">
+                    <i class="ph-fill ph-flag-pennant text-3xl text-tertiary mb-2"></i>
+                    <p class="text-secondary max-w-md text-sm">Define your company goals through chat. The CEO will break them down into actionable milestones for your team.</p>
+                    <button class="bg-white border border-hairline shadow-sm hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2" data-tabgroup="company" data-tab="co-chat"><i class="ph ph-chat-circle"></i> Set goals in chat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB-VIEW 4: COMPANY > PAYMENTS -->
+        <div id="co-payments" class="sub-view company items-center justify-center h-full bg-[#FBF9F6]">
+            <div class="max-w-md flex flex-col items-center text-center gap-4 p-8">
+                <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center shadow-inner mb-4"><i class="ph-fill ph-stripe-logo text-3xl"></i></div>
+                <h2 class="text-xl font-medium tracking-tight">Connect Stripe to view payments</h2>
+                <p class="text-sm text-secondary leading-relaxed mb-4">Link your Stripe account to see charges, refunds, and payment activity in one place. Payments flow directly into your connected account.</p>
+                <button class="bg-primary text-white hover:bg-gray-800 px-5 py-2.5 rounded-full text-sm font-medium transition-transform hover:-translate-y-0.5 shadow-lg flex items-center gap-2" data-tabgroup="company" data-tab="co-settings"><i class="ph-fill ph-lightning"></i> Go to Connections</button>
+            </div>
+        </div>
+
+        <!-- SUB-VIEW 5: COMPANY > SETTINGS -->
+        <div id="co-settings" class="sub-view company flex-col h-full bg-[#FBF9F6] p-8 overflow-y-auto">
+            <div class="max-w-3xl w-full mx-auto space-y-10 pb-20">
+                <h1 class="text-2xl font-medium font-display tracking-wide">Settings</h1>
+                
+                <!-- Inner Settings Nav Strip -->
+                <div class="flex gap-6 border-b border-hairline cursor-pointer">
+                    <span class="pb-2 border-b-2 border-primary text-primary font-medium text-sm">General</span>
+                    <span class="pb-2 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Billing</span>
+                    <span class="pb-2 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Team</span>
+                    <span class="pb-2 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Usage</span>
+                    <span class="pb-2 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Server</span>
+                </div>
+
+                <div class="space-y-8">
+                    <!-- General / Company -->
+                    <section class="space-y-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-tertiary">Company Profile</h3>
+                        <div class="bg-white border border-hairline p-6 rounded-xl shadow-micro space-y-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-xl bg-gray-100 border border-hairline flex items-center justify-center text-xl font-display uppercase font-bold tracking-widest text-primary">CO</div>
+                                <div>
+                                    <h4 class="text-sm font-medium mb-1">Company Logo</h4>
+                                    <button class="border border-hairline hover:bg-black/5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">Upload image</button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-secondary">Company Name</label>
+                                <input type="text" value="company x" class="w-full bg-cream border border-hairline rounded-lg px-3 py-2 text-sm outline-none focus:border-black/30 transition-colors">
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-medium text-secondary">Description</label>
+                                <textarea placeholder="Optional company description" rows="3" class="w-full bg-cream border border-hairline rounded-lg px-3 py-2 text-sm outline-none focus:border-black/30 transition-colors placeholder:text-tertiary resize-none">An AI-powered newsletter business focused on content creation, audience growth, and monetization through subscriptions and sponsorships.</textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Agents Configuration -->
+                    <section class="space-y-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-tertiary">Agents Lifecycle</h3>
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-sm">Require board approval for new hires</p>
+                                    <p class="text-xs text-secondary mt-0.5">Agents must ask you before spending credits to spawn new team members.</p>
+                                </div>
+                                <div class="w-9 h-5 bg-status-green rounded-full relative cursor-pointer flex-shrink-0 transition-colors">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro">
+                            <div class="flex flex-col gap-3">
+                                <div class="flex items-center gap-3">
+                                    <i class="ph ph-buildings text-2xl text-tertiary"></i>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-sm">Is your company incorporated?</p>
+                                        <p class="text-xs text-secondary mt-0.5">Allow agents to handle legal and tax paperwork.</p>
+                                    </div>
+                                    <div class="w-9 h-5 bg-gray-200 border border-hairline rounded-full relative cursor-pointer flex-shrink-0 transition-colors">
+                                        <div class="w-4 h-4 bg-white border border-hairline rounded-full absolute left-0.5 top-0.5 shadow-sm"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Nav Grid -->
+                    <section class="grid grid-cols-2 gap-4">
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro hover:border-black/20 cursor-pointer flex items-center gap-3 transition-colors group">
+                            <div class="w-10 h-10 bg-cream rounded-lg border border-hairline flex items-center justify-center text-primary"><i class="ph ph-globe text-xl"></i></div>
+                            <div><p class="font-medium text-sm group-hover:underline">Domains</p><p class="text-xs text-secondary">Custom email domains</p></div>
+                        </div>
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro hover:border-black/20 cursor-pointer flex items-center gap-3 transition-colors group">
+                            <div class="w-10 h-10 bg-cream rounded-lg border border-hairline flex items-center justify-center text-primary"><i class="ph ph-credit-card text-xl"></i></div>
+                            <div><p class="font-medium text-sm group-hover:underline">Virtual Cards</p><p class="text-xs text-secondary">Agent spending cards</p></div>
+                        </div>
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro hover:border-black/20 cursor-pointer flex items-center gap-3 transition-colors group">
+                            <div class="w-10 h-10 bg-cream rounded-lg border border-hairline flex items-center justify-center text-primary"><i class="ph ph-squares-four text-xl"></i></div>
+                            <div><p class="font-medium text-sm group-hover:underline">Custom Dashboards</p><p class="text-xs text-secondary">Chat-built pages</p></div>
+                        </div>
+                        <div class="bg-white border border-hairline p-4 rounded-xl shadow-micro hover:border-black/20 cursor-pointer flex items-center gap-3 transition-colors group">
+                            <div class="w-10 h-10 bg-cream rounded-lg border border-hairline flex items-center justify-center text-primary"><i class="ph ph-stack text-xl"></i></div>
+                            <div><p class="font-medium text-sm group-hover:underline">Connections</p><p class="text-xs text-secondary">Integrations & APIs</p></div>
+                        </div>
+                    </section>
+                    
+                    <!-- Danger Zone -->
+                    <section class="mt-12">
+                        <div class="bg-red-50 border border-red-200 p-5 rounded-xl">
+                            <h4 class="text-sm font-medium text-red-800 mb-1">Delete Company</h4>
+                            <p class="text-xs text-red-600 mb-4">Permanently destroy this company, all agent memory, files, and tasks. This cannot be undone.</p>
+                            <button class="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-xs font-medium transition-colors shadow-sm">Delete company x</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: TASKS (KANBAN)                       -->
+    <!-- ========================================== -->
+    <div id="view-tasks" class="view flex-col h-full bg-[#FBF9F6] overflow-hidden">
+        <header class="h-14 border-b border-hairline flex items-center justify-between px-6 bg-white shrink-0">
+            <div class="flex items-center gap-6 h-full">
+                <button class="h-full px-1 border-b-2 font-medium tab-active">All</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-inactive">Active</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-inactive">Backlog</button>
+                <button class="h-full px-1 border-b-2 border-transparent font-medium tab-inactive">Done</button>
+            </div>
+            <button class="bg-primary text-white hover:bg-gray-800 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"><i class="ph ph-plus"></i> New Task</button>
+        </header>
+        
+        <!-- Kanban Board -->
+        <div class="flex-1 overflow-x-auto p-6 flex items-start gap-4 h-full">
+            
+            <!-- Column: Needs Review -->
+            <div class="w-80 shrink-0 flex flex-col max-h-full">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs font-semibold text-secondary flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-status-amber"></div> NEEDS REVIEW <span class="bg-black/5 text-primary px-1.5 rounded">1</span></span>
+                </div>
+                <div class="flex-1 overflow-y-auto space-y-3 pb-4">
+                    <!-- Card -->
+                    <div class="kanban-card bg-white border border-hairline rounded-xl p-4 shadow-sm hover:shadow-md hover:border-black/20 flex flex-col gap-3">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-medium text-sm leading-snug">Create Content Calendar</h4>
+                            <div class="w-6 h-6 rounded bg-cream border border-hairline flex items-center justify-center text-xs text-tertiary shrink-0"><i class="ph ph-user"></i></div>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="border border-hairline text-secondary text-[10px] px-1.5 py-0.5 rounded truncate max-w-[120px]">Growth Marketer</span>
+                            <span class="bg-status-amber/10 text-status-amber border border-status-amber/20 text-[10px] px-1.5 py-0.5 rounded font-medium">COMPAB84E80-1 — For Review</span>
+                        </div>
+                        <div class="pt-2 border-t border-hairline mt-1 flex justify-between gap-2">
+                            <button class="flex-1 py-1.5 rounded border border-hairline text-secondary text-xs hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">✕ Reject</button>
+                            <button class="flex-1 py-1.5 rounded bg-primary text-white text-xs hover:bg-gray-800 transition-colors">✓ Approve</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column: In Progress -->
+            <div class="w-80 shrink-0 flex flex-col max-h-full opacity-60">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs font-semibold text-secondary flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-blue-500"></div> IN PROGRESS <span class="bg-black/5 text-primary px-1.5 rounded">0</span></span>
+                </div>
+                <!-- Empty Column State -->
+                <div class="h-24 border-2 border-dashed border-hairline rounded-xl flex items-center justify-center"></div>
+            </div>
+
+            <!-- Column: Queued -->
+            <div class="w-80 shrink-0 flex flex-col max-h-full">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs font-semibold text-secondary flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-status-amber opacity-60"></div> QUEUED <span class="bg-black/5 text-primary px-1.5 rounded">3</span></span>
+                </div>
+                <div class="flex-1 overflow-y-auto space-y-3 pb-4">
+                    <!-- Standard Card 1 -->
+                    <div class="kanban-card bg-white border border-hairline rounded-xl p-4 shadow-sm hover:shadow-md hover:border-black/20 flex flex-col gap-3">
+                        <h4 class="font-medium text-sm leading-snug">Build company x landing page</h4>
+                        <div class="flex justify-between items-center mt-2 border-t border-hairline pt-3">
+                            <span class="text-[10px] text-tertiary">Landing Page Engineer</span>
+                            <span class="text-[10px] text-tertiary uppercase">COMPAB84E80-4</span>
+                        </div>
+                    </div>
+                    <!-- Standard Card 2 -->
+                    <div class="kanban-card bg-white border border-hairline rounded-xl p-4 shadow-sm hover:shadow-md hover:border-black/20 flex flex-col gap-3">
+                        <h4 class="font-medium text-sm leading-snug">Create GTM Plan for company x</h4>
+                        <div class="flex justify-between items-center mt-2 border-t border-hairline pt-3">
+                            <span class="text-[10px] text-tertiary">Growth Marketer</span>
+                            <span class="text-[10px] text-tertiary uppercase">COMPAB84E80-2</span>
+                        </div>
+                    </div>
+                    <!-- Standard Card 3 -->
+                    <div class="kanban-card bg-white border border-hairline rounded-xl p-4 shadow-sm hover:shadow-md hover:border-black/20 flex flex-col gap-3">
+                        <h4 class="font-medium text-sm leading-snug">Write First Blog Post</h4>
+                        <div class="flex justify-between items-center mt-2 border-t border-hairline pt-3">
+                            <span class="text-[10px] text-tertiary">Growth Marketer</span>
+                            <span class="text-[10px] text-tertiary uppercase">COMPAB84E80-3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Column: Completed -->
+            <div class="w-80 shrink-0 flex flex-col max-h-full opacity-60">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span class="text-xs font-semibold text-secondary flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-status-green"></div> COMPLETED <span class="bg-black/5 text-primary px-1.5 rounded">0</span></span>
+                </div>
+                <div class="h-24 border-2 border-dashed border-hairline rounded-xl flex items-center justify-center"></div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: STORE                                -->
+    <!-- ========================================== -->
+    <div id="view-store" class="view flex-col h-full bg-[#FBF9F6] overflow-y-auto w-full relative z-30">
+        <!-- Inner Header specific to store to overlay -->
+        <div class="bg-cream border-b border-hairline py-10 px-8 flex flex-col items-center justify-center text-center sticky top-0 z-20 shadow-sm">
+            <h1 class="font-display text-4xl mb-3 tracking-wide">Naïve Templates</h1>
+            <p class="text-secondary max-w-xl text-sm">Download AI employees and businesses, customize them to your needs, and build them up into something entirely yours.</p>
+            
+            <div class="mt-8 flex bg-white border border-hairline rounded-lg p-1 shadow-sm">
+                <button class="px-5 py-1.5 bg-primary text-white rounded-md text-xs font-medium shadow">All</button>
+                <button class="px-5 py-1.5 text-secondary hover:text-primary rounded-md text-xs font-medium transition-colors">Businesses</button>
+                <button class="px-5 py-1.5 text-secondary hover:text-primary rounded-md text-xs font-medium transition-colors">Employees</button>
+                <button class="px-5 py-1.5 text-secondary hover:text-primary rounded-md text-xs font-medium transition-colors">My Profile</button>
+            </div>
+        </div>
+
+        <div class="flex max-w-7xl mx-auto w-full p-8 gap-8">
+            <!-- Filter Rail -->
+            <aside class="w-48 shrink-0 space-y-8">
+                <div>
+                    <h4 class="text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-3">Business Categories</h4>
+                    <ul class="space-y-2 text-xs text-secondary">
+                        <li class="font-medium text-primary flex items-center justify-between cursor-pointer"><span>All Businesses</span> <i class="ph ph-check"></i></li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Agency & Services</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">E-Commerce & DTC</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Media & Content</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">SaaS & Tech</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Professional Services</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Local & Physical</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Data & Analytics</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-3">Employee Departments</h4>
+                    <ul class="space-y-2 text-xs text-secondary">
+                        <li class="font-medium text-primary flex items-center justify-between cursor-pointer"><span>All Employees</span> <i class="ph ph-check"></i></li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Marketing & Growth</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Sales & Revenue</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Engineering & Product</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Operations & Finance</li>
+                        <li class="hover:text-primary transition-colors cursor-pointer">Data & Analytics</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Grid Content -->
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold mb-4">Featured</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                    
+                    <!-- Dark Card 1 -->
+                    <div class="bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-lg flex flex-col group border border-[#2e2e2e]">
+                        <div class="h-32 bg-[#252525] relative p-4 flex items-center justify-center border-b border-[#333]">
+                            <!-- Mock Diagram -->
+                            <div class="relative w-full h-full">
+                                <div class="absolute top-2 left-6 w-8 h-8 rounded border border-white/20 flex flex-col items-center justify-center p-1"><div class="w-full h-px bg-white/20 mb-1"></div><div class="w-full h-px bg-white/20"></div></div>
+                                <div class="absolute bottom-2 right-8 w-10 h-6 rounded-full border border-white/20 flex items-center justify-center text-[10px] text-white/50">Output</div>
+                                <div class="absolute inset-0 flex items-center justify-center"><i class="ph ph-play-circle text-3xl text-white/40 group-hover:scale-110 transition-transform"></i></div>
+                                <!-- SVG connecting line -->
+                                <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none"><path d="M 40 20 C 80 20, 120 70, 160 70" stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none"/></svg>
+                            </div>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="text-white font-medium">Faceless YouTube Empire</h4>
+                            </div>
+                            <p class="text-xs text-gray-400 mb-4 leading-relaxed line-clamp-2">Complete automated content pipeline for generating, scripting, and managing a faceless YT channel.</p>
+                            <div class="mt-auto flex flex-col gap-3 border-t border-[#333] pt-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="bg-[#333] text-white text-[10px] px-2 py-0.5 rounded-full">Media & Content</span>
+                                    <span class="text-[10px] text-gray-500">By naive</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-xs text-gray-400">4 employees · 8.4K</span>
+                                    <button class="bg-white text-black hover:bg-gray-200 px-4 py-1.5 rounded-full text-xs font-medium transition-colors">Get</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dark Card 2 -->
+                    <div class="bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-lg flex flex-col group border border-[#2e2e2e]">
+                        <div class="h-32 bg-[#252525] relative p-4 flex items-center justify-center border-b border-[#333]">
+                           <i class="ph ph-share-network text-4xl text-white/20"></i>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="text-white font-medium">SMMA (Social Media Marketing)</h4>
+                            </div>
+                            <p class="text-xs text-gray-400 mb-4 leading-relaxed line-clamp-2">Agency in a box. Outbound sales agent paired with a social media manager and content creator.</p>
+                            <div class="mt-auto flex flex-col gap-3 border-t border-[#333] pt-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="bg-[#333] text-white text-[10px] px-2 py-0.5 rounded-full">Agency & Services</span>
+                                    <span class="text-[10px] text-gray-500">By naive</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-xs text-gray-400">3 employees · 5.2K</span>
+                                    <button class="bg-white text-black hover:bg-gray-200 px-4 py-1.5 rounded-full text-xs font-medium transition-colors">Get</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dark Card 3 -->
+                    <div class="bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-lg flex flex-col group border border-[#2e2e2e]">
+                        <div class="h-32 bg-[#252525] relative p-4 flex items-center justify-center border-b border-[#333]">
+                            <i class="ph ph-video-camera text-4xl text-white/20"></i>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="text-white font-medium truncate">YouTube Long-Form Prod...</h4>
+                            </div>
+                            <p class="text-xs text-gray-400 mb-4 leading-relaxed line-clamp-2">Research, outline, and script deep-dive video essays with embedded SEO optimization structure.</p>
+                            <div class="mt-auto flex flex-col gap-3 border-t border-[#333] pt-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="bg-[#333] text-white text-[10px] px-2 py-0.5 rounded-full">Marketing & Growth</span>
+                                    <span class="text-[10px] text-gray-500">By naive</span>
+                                </div>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-xs text-gray-400">2 employees · 3.1K</span>
+                                    <button class="bg-white text-black hover:bg-gray-200 px-4 py-1.5 rounded-full text-xs font-medium transition-colors">Get</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: DRIVE                                -->
+    <!-- ========================================== -->
+    <div id="view-drive" class="view flex-col h-full bg-white overflow-hidden">
+        <header class="h-16 border-b border-hairline flex items-center justify-between px-6 bg-cream shadow-sm shrink-0">
+            <h1 class="font-medium text-lg">Drive</h1>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center bg-white border border-hairline rounded-md px-3 py-1.5 shadow-micro w-64">
+                    <i class="ph ph-magnifying-glass text-tertiary mr-2"></i>
+                    <input type="text" placeholder="Search files…" class="bg-transparent border-none outline-none text-sm w-full placeholder:text-tertiary">
+                </div>
+                <div class="flex items-center bg-white border border-hairline rounded-md px-3 py-1.5 text-sm shadow-micro cursor-pointer hover:bg-black/5 text-secondary">
+                    All sources <i class="ph ph-caret-down ml-2 text-xs"></i>
+                </div>
+                <div class="flex items-center bg-white border border-hairline rounded-md px-3 py-1.5 text-sm shadow-micro cursor-pointer hover:bg-black/5 text-secondary">
+                    <i class="ph ph-arrows-down-up mr-2"></i> Newest
+                </div>
+                <button class="bg-primary text-white hover:bg-gray-800 px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-2"><i class="ph ph-arrow-u-up-left rotate-90"></i> Upload</button>
+            </div>
+        </header>
+        
+        <div class="flex h-full">
+            <!-- Left Filter Tabs -->
+            <aside class="w-48 border-r border-hairline bg-[#FBF9F6] p-4 flex flex-col gap-1 shrink-0 text-sm">
+                <button class="flex items-center justify-between px-3 py-2 bg-black/5 font-medium rounded-md w-full text-left" onclick="toggleDriveTab('empty')">All Files</button>
+                <div class="my-2 border-t border-hairline"></div>
+                <button class="px-3 py-1.5 text-secondary hover:text-primary text-left w-full rounded-md hover:bg-black/5">Executive</button>
+                <button class="px-3 py-1.5 text-secondary hover:text-primary text-left w-full rounded-md hover:bg-black/5">Marketing</button>
+                <button class="px-3 py-1.5 text-secondary hover:text-primary text-left w-full rounded-md hover:bg-black/5">Sales</button>
+                <button class="px-3 py-1.5 text-secondary hover:text-primary text-left w-full rounded-md hover:bg-black/5">Engineering</button>
+                <button class="px-3 py-1.5 text-secondary hover:text-primary text-left w-full rounded-md hover:bg-black/5">Recruiting</button>
+                <div class="my-2 border-t border-hairline"></div>
+                <button class="flex items-center justify-between px-3 py-2 text-secondary hover:text-primary rounded-md w-full text-left" onclick="toggleDriveTab('pending')"><span>Pending</span> <span class="bg-status-amber text-white text-[10px] px-1.5 rounded">1</span></button>
+            </aside>
+
+            <!-- Main Panel -->
+            <div class="flex-1 bg-white relative">
+                
+                <!-- Empty State (Default) -->
+                <div id="drive-empty" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-white z-10 transition-opacity">
+                    <!-- Layered Cards Illustration -->
+                    <div class="relative w-32 h-32 mb-6">
+                        <div class="absolute bottom-0 left-4 w-20 h-24 bg-cream border border-hairline rounded shadow-sm rotate-[-10deg]"></div>
+                        <div class="absolute bottom-2 left-6 w-20 h-24 bg-gray-50 border border-hairline rounded shadow rotate-[-5deg]"></div>
+                        <div class="absolute bottom-4 left-8 w-20 h-24 bg-white border border-hairline rounded shadow-md flex items-center justify-center border-dashed text-tertiary text-2xl z-10">+</div>
+                    </div>
+                    <p class="text-secondary max-w-sm text-center text-sm mb-6 leading-relaxed">Upload files or let your agents create deliverables that will show up here.</p>
+                    <button class="border border-hairline bg-white shadow-sm hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2"><i class="ph ph-arrow-u-up-left rotate-90"></i> Upload a file</button>
+                </div>
+
+                <!-- Pending State Variant -->
+                <div id="drive-pending" class="hidden absolute inset-0 flex-col bg-white z-20">
+                    <!-- Header -->
+                    <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-hairline bg-cream text-xs font-semibold text-tertiary uppercase tracking-wider">
+                        <div class="col-span-6">Name</div>
+                        <div class="col-span-2">Source</div>
+                        <div class="col-span-2">Folder</div>
+                        <div class="col-span-2 text-right">Modified ↓</div>
+                    </div>
+                    <!-- Row -->
+                    <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-hairline hover:bg-black/5 cursor-pointer items-center text-sm group">
+                        <div class="col-span-6 flex items-center gap-3">
+                            <i class="ph-fill ph-file-text text-2xl text-blue-500"></i>
+                            <span class="font-medium group-hover:underline">30-Day Content Calendar — Company X</span>
+                            <span class="bg-status-pending text-status-amber border border-status-amber/20 text-[10px] px-1.5 py-0.5 rounded font-medium ml-2 uppercase tracking-wide">Pending Review</span>
+                        </div>
+                        <div class="col-span-2 text-secondary flex items-center gap-1.5"><div class="w-4 h-4 rounded bg-cream border border-hairline flex items-center justify-center text-[8px]"><i class="ph ph-user"></i></div> Growth Marketer</div>
+                        <div class="col-span-2 text-secondary">Marketing</div>
+                        <div class="col-span-2 text-right text-secondary">14 Apr, 12:14</div>
+                    </div>
+                    
+                    <div class="flex-1 flex flex-col items-center pt-20 text-tertiary">
+                        <i class="ph ph-check-circle text-4xl mb-2 opacity-50"></i>
+                        <p class="text-sm">No other files pending.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: TEAM > EMPLOYEE DETAIL (CEO)         -->
+    <!-- ========================================== -->
+    <div id="view-team-ceo" class="view flex-col h-full bg-[#FBF9F6] overflow-hidden">
+        <!-- Unified Header / Breadcrumb -->
+        <header class="h-14 border-b border-hairline flex items-center justify-between px-6 bg-white shrink-0 sticky top-0 z-10 shadow-sm">
+             <div class="flex items-center gap-2 text-sm">
+                <button class="text-tertiary hover:text-primary transition-colors flex items-center gap-1" onclick="switchView('view-company-wrapper')"><i class="ph ph-arrow-left"></i> Team</button>
+                <span class="text-tertiary">/</span>
+                <span class="font-medium">Naive [CEO]</span>
+            </div>
+            <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-status-amber animate-pulse"></div> <span class="text-sm text-secondary font-medium">Idle</span></div>
+        </header>
+
+        <!-- Sub navigation -->
+        <div class="border-b border-hairline bg-white px-6 hidden sm:flex">
+             <div class="flex gap-6">
+                <button class="py-3 px-1 border-b-2 border-primary text-primary font-medium text-sm">Profile</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Chat</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Inbox</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Compute</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Settings</button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 max-w-5xl mx-auto w-full pb-20">
+            <!-- Header Card -->
+            <div class="bg-white border border-hairline p-6 rounded-2xl shadow-micro flex justify-between items-start mb-6">
+                <div class="flex gap-4 items-start">
+                    <div class="w-16 h-16 rounded-xl bg-gray-50 border border-hairline flex items-center justify-center p-2"><svg class="w-full h-full text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg></div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-3">
+                            <h1 class="font-display text-2xl tracking-wide">Naive [CEO]</h1>
+                        </div>
+                        <p class="text-sm text-secondary leading-relaxed max-w-lg">Company strategist. Handles all user communication, delegates tasks, reviews work, maintains strategy.</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="border border-hairline bg-white hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2"><i class="ph ph-gear"></i> Configure</button>
+                    <button class="bg-primary text-white hover:bg-gray-800 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2"><i class="ph ph-chat-circle"></i> Chat</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mb-8">
+                <!-- Identity Card -->
+                <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro space-y-4">
+                    <h3 class="text-[10px] font-semibold text-tertiary uppercase tracking-wider">Identity Overview</h3>
+                    <div class="space-y-3 p-3 bg-cream rounded border border-hairline/50">
+                        <div class="flex justify-between items-center text-sm border-b border-hairline/50 pb-2">
+                            <span class="text-secondary">Email</span>
+                            <span class="font-medium truncate max-w-[200px]">naive@company-x.naive.ai</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm border-b border-hairline/50 pb-2">
+                            <span class="text-secondary">Phone</span>
+                            <span class="text-tertiary italic">N/A</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-secondary">Legal Entity</span>
+                            <span class="font-medium bg-white px-2 rounded border border-hairline">company x Ops [LLC]</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compute Current Card -->
+                <div class="bg-white border border-hairline p-5 rounded-xl shadow-micro flex flex-col relative overflow-hidden group">
+                     <!-- ambient decoration -->
+                    <i class="ph-fill ph-cpu text-6xl text-black/5 absolute -bottom-4 -right-2 group-hover:scale-110 transition-transform duration-500"></i>
+                    
+                    <h3 class="text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-2 relative z-10">Compute (Current Period)</h3>
+                    <div class="mt-auto relative z-10 flex justify-between items-end">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-3xl font-display tracking-wider text-primary">0.30 CR</span>
+                            <div class="flex gap-2 items-center text-xs">
+                                <span class="bg-status-amber/10 text-status-amber border border-status-amber/30 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">Idle</span>
+                                <span class="text-secondary">AI Cost: $0.30</span>
+                            </div>
+                        </div>
+                        <a href="#" class="text-xs font-medium text-blue-600 hover:underline">View Details →</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recursive Intelligence (Empty State for CEO) -->
+            <div class="mb-8">
+                <h3 class="text-sm font-semibold mb-4 border-b border-hairline pb-2">RECURSIVE INTELLIGENCE</h3>
+                <div class="w-full h-32 border border-dashed border-black/20 bg-white/50 rounded-xl flex items-center justify-center text-secondary text-sm">
+                    No loops or cycles have been created yet.
+                </div>
+            </div>
+
+            <!-- Inner bottom tabs mapping -->
+            <div>
+                 <div class="flex gap-4 border-b border-hairline mb-4">
+                    <span class="pb-2 border-b-2 border-primary text-primary font-medium text-sm">Tasks</span>
+                    <span class="pb-2 text-secondary hover:text-primary text-sm cursor-pointer">Activity</span>
+                    <span class="pb-2 text-secondary hover:text-primary text-sm cursor-pointer">Learnings</span>
+                    <span class="pb-2 text-secondary hover:text-primary text-sm cursor-pointer">Tools</span>
+                </div>
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-hairline shadow-sm">
+                    <div>
+                        <h4 class="font-medium text-sm">Currently Working On</h4>
+                        <p class="text-xs text-secondary mt-1">No active tasks.</p>
+                    </div>
+                    <span class="bg-black/5 px-2 py-1 rounded text-xs font-medium text-secondary">0 active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: TEAM > ENGINEER (RECURSIVE FLOW)     -->
+    <!-- ========================================== -->
+    <div id="view-team-engineer" class="view flex-col h-full bg-[#FBF9F6] overflow-hidden">
+        <!-- Reusing header structure from CEO but altered data -->
+        <header class="h-14 border-b border-hairline flex items-center justify-between px-6 bg-white shrink-0 sticky top-0 z-10 shadow-sm">
+             <div class="flex items-center gap-2 text-sm">
+                <button class="text-tertiary hover:text-primary transition-colors flex items-center gap-1" onclick="switchView('view-company-wrapper')"><i class="ph ph-arrow-left"></i> Team</button>
+                <span class="text-tertiary">/</span>
+                <span class="font-medium">Landing Page Engineer</span>
+                <span class="bg-blue-100 text-blue-700 border border-blue-200 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ml-2">FLEX</span>
+            </div>
+            <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-status-amber animate-pulse"></div> <span class="text-sm text-secondary font-medium">Idle</span></div>
+        </header>
+
+         <!-- Sub navigation Extended -->
+         <div class="border-b border-hairline bg-white px-6 overflow-x-auto whitespace-nowrap hidden sm:flex">
+             <div class="flex gap-6 min-w-max">
+                <button class="py-3 px-1 border-b-2 border-primary text-primary font-medium text-sm">Profile</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Chat</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Browser</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Workspace</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Virtual Cards</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Inbox</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Compute</button>
+                <button class="py-3 px-1 border-b-2 border-transparent text-secondary hover:text-primary text-sm transition-colors">Settings</button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-8 max-w-5xl mx-auto w-full pb-20">
+             <!-- Header Card -->
+             <div class="bg-white border border-hairline p-6 rounded-2xl shadow-micro flex justify-between items-start mb-6">
+                <div class="flex gap-4 items-start">
+                    <div class="w-16 h-16 rounded-xl bg-gray-50 border border-hairline flex items-center justify-center p-2 text-2xl text-tertiary"><i class="ph ph-user"></i></div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <h1 class="font-display text-2xl tracking-wide">Landing Page Engineer</h1>
+                        </div>
+                        <p class="text-xs bg-cream border border-hairline px-2 py-1 rounded-md inline-block text-secondary"><span class="font-medium text-primary">Engineering</span> · Website development, landing pages, and technical infrastructure</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECURSIVE INTELLIGENCE (Populated Diagram) -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-4 border-b border-hairline pb-2">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-primary">Recursive Intelligence Network</h3>
+                    <span class="text-xs font-medium text-secondary bg-white px-2 py-1 rounded shadow-sm border border-hairline"><i class="ph-fill ph-magic-wand"></i> Learns from every cycle. Gets sharper every run.</span>
+                </div>
+                
+                <div class="bg-white border border-hairline rounded-2xl p-10 flex items-center justify-center relative overflow-hidden shadow-micro">
+                    <!-- Subtle background grid -->
+                    <div class="absolute inset-0 z-0 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:20px_20px] opacity-30"></div>
+                    
+                    <!-- Diagram Container -->
+                    <div class="relative w-[600px] h-[300px] flex items-center justify-center z-10">
+                        <!-- SVG for complex lines -->
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 600 300">
+                            <!-- Loop Path -->
+                            <path d="M 150 150 L 300 50 L 450 150 L 300 250 Z" fill="none" stroke="#E5E5E5" stroke-width="2" stroke-dasharray="4" />
+                            <!-- Animated data flowing dot -->
+                            <circle r="4" fill="#0A0A0A">
+                                <animateMotion dur="6s" repeatCount="indefinite" path="M 150 150 L 300 50 L 450 150 L 300 250 Z" />
+                            </circle>
+                        </svg>
+
+                        <!-- Nodes -->
+                        <div class="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group">
+                            <div class="w-16 h-16 rounded-full bg-white border-2 border-primary shadow-md flex items-center justify-center text-xl font-display group-hover:scale-110 transition-transform duration-300">1</div>
+                            <span class="font-bold text-sm bg-white/80 px-1 rounded">Reason</span>
+                            <span class="text-[10px] text-tertiary w-24 text-center leading-tight">Aggregate all context</span>
+                        </div>
+
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 group">
+                            <div class="w-16 h-16 rounded-full bg-white border-2 border-primary shadow-md flex items-center justify-center text-xl font-display group-hover:scale-110 transition-transform duration-300">2</div>
+                            <span class="font-bold text-sm bg-white/80 px-1 rounded">Act</span>
+                            <span class="text-[10px] text-tertiary w-24 text-center leading-tight">Execute & deliver</span>
+                        </div>
+
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group">
+                            <div class="w-16 h-16 rounded-full bg-primary text-white border-2 border-primary shadow-md flex items-center justify-center text-xl font-display group-hover:scale-110 transition-transform duration-300">3</div>
+                            <span class="font-bold text-sm bg-white/80 px-1 rounded">Observe</span>
+                            <span class="text-[10px] text-tertiary w-24 text-center leading-tight">Analyse KPIs & signals</span>
+                        </div>
+
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 group">
+                            <div class="w-16 h-16 rounded-full bg-white border-2 border-primary shadow-md flex items-center justify-center text-xl font-display group-hover:scale-110 transition-transform duration-300">4</div>
+                            <span class="font-bold text-sm bg-white/80 px-1 rounded">Learn</span>
+                            <span class="text-[10px] text-tertiary w-24 text-center leading-tight">Refine & remember</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW: UPGRADE PAGE / PRICING               -->
+    <!-- ========================================== -->
+    <div id="view-upgrade" class="view fixed inset-0 z-50 bg-[#FBF9F6] hidden flex-col overflow-y-auto w-full h-full">
+        <!-- Upgrade Header -->
+        <header class="py-6 px-10 flex items-center justify-between mx-auto w-full max-w-7xl">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 text-primary" viewBox="0 0 16 16"><use href="#cloud-pixel"></use></svg>
+                <span class="font-display text-xl tracking-wider">naïve</span>
+            </div>
+            <button class="text-sm font-medium hover:underline flex items-center gap-1" onclick="switchView('view-company-wrapper')">Sign out <i class="ph ph-arrow-u-up-right"></i></button>
+        </header>
+
+        <div class="flex flex-col items-center mt-10 mb-20 px-6">
+            <h1 class="text-4xl font-display mb-3 text-center">Choose your plan</h1>
+            <p class="text-secondary max-w-md text-center mb-8">Access the most powerful AI workforce. Scale intelligently as you demand more capacity.</p>
+            
+            <div class="bg-status-amber/10 border border-status-amber border-opacity-40 text-status-amber text-xs font-medium px-4 py-1.5 rounded-full mb-10 shadow-sm flex items-center gap-2">
+                <i class="ph-fill ph-clock"></i> You're on a free trial ending 21 April 2026
+            </div>
+
+            <!-- Pricing Tier Grid -->
+            <div class="grid md:grid-cols-3 gap-6 w-full max-w-5xl items-stretch">
+                <!-- Free -->
+                <div class="bg-white border border-hairline rounded-3xl p-8 shadow-sm flex flex-col relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-black text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-lg">Current</div>
+                    <div class="mb-6 border-b border-hairline pb-6">
+                        <h3 class="text-xl font-medium mb-1 tracking-tight">Free</h3>
+                        <p class="text-secondary text-sm h-10">Explore Naive with a time-limited trial.</p>
+                        <div class="mt-4 flex items-baseline gap-1"><span class="text-3xl font-display">Limited</span></div>
+                    </div>
+                    <ul class="space-y-4 text-sm text-secondary flex-1">
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> AI agents</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> 1 usenaive.app subdomain</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> 1 collaborator</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> 1 business</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Community support</li>
+                    </ul>
+                    <button class="w-full mt-8 py-3 rounded-xl border border-hairline bg-gray-50 text-secondary text-sm font-medium cursor-not-allowed">Current plan</button>
+                </div>
+
+                <!-- Starter -->
+                <div class="bg-primary text-white border border-black rounded-3xl p-8 shadow-2xl flex flex-col relative transform hover:-translate-y-2 transition-transform duration-500 shadow-black/20">
+                    <div class="mb-6 border-b border-gray-800 pb-6">
+                        <h3 class="text-xl font-medium mb-1 tracking-tight">Starter</h3>
+                        <p class="text-gray-400 text-sm h-10">For individuals and small teams getting started.</p>
+                        <div class="mt-4 flex items-baseline gap-1"><span class="text-4xl font-display tracking-tight">$49</span><span class="text-gray-400">/mo</span></div>
+                    </div>
+                    <ul class="space-y-4 text-sm text-gray-300 flex-1">
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> AI agents</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> 5 usenaive.app subdomains</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> Unlimited collaborators</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> On-demand credit top-ups</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> Credit rollovers</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> Remove Naive badge</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-white"></i> Custom domains</li>
+                        <li class="flex items-center gap-3 font-medium text-white border-t border-gray-800 pt-3"><i class="ph-bold ph-coins text-white"></i> 50 monthly credits</li>
+                    </ul>
+                    <button class="w-full mt-8 py-3 rounded-xl bg-white text-black text-sm font-medium hover:bg-gray-100 transition-colors">Subscribe</button>
+                </div>
+
+                <!-- Pro -->
+                <div class="bg-white border border-hairline rounded-3xl p-8 shadow-sm flex flex-col relative hover:border-black/30 transition-colors">
+                    <div class="mb-6 border-b border-hairline pb-6">
+                        <h3 class="text-xl font-medium mb-1 tracking-tight">Pro</h3>
+                        <p class="text-secondary text-sm h-10">For teams that need advanced features and more power.</p>
+                        <div class="mt-4 flex items-baseline gap-1"><span class="text-4xl font-display tracking-tight">$149</span><span class="text-secondary">/mo</span></div>
+                    </div>
+                    <ul class="space-y-4 text-sm text-secondary flex-1">
+                        <li class="flex items-center gap-3 font-medium text-primary"><i class="ph-bold ph-plus"></i> Everything in Starter</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Internal publish</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Design templates</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Security center</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Role-based access</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> SSO</li>
+                        <li class="flex items-center gap-3"><i class="ph-bold ph-check text-black"></i> Team workspace</li>
+                        <li class="flex items-center gap-3 font-medium text-black border-t border-hairline pt-3"><i class="ph-bold ph-coins text-black"></i> 200 monthly credits</li>
+                    </ul>
+                    <button class="w-full mt-8 py-3 rounded-xl border border-black bg-black text-white text-sm font-medium hover:bg-gray-900 transition-colors">Subscribe</button>
+                </div>
+            </div>
+
+            <!-- Pay as you go strip -->
+            <div class="max-w-5xl w-full bg-white border border-hairline rounded-2xl p-6 shadow-sm mt-8 flex sm:flex-row flex-col justify-between items-center sm:gap-0 gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-cream rounded-full flex items-center justify-center border border-hairline shadow-inner"><i class="ph-fill ph-coin text-2xl text-status-amber"></i></div>
+                    <div>
+                        <h4 class="font-medium text-primary mb-0.5">Pay as you go</h4>
+                        <p class="text-sm text-secondary">Top up anytime at $0.50 per credit. Credits never expire.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <span class="text-sm font-medium text-secondary bg-cream px-3 py-1.5 border border-hairline rounded-md shadow-micro">Current balance <span class="text-primary ml-1 font-bold">15.25</span></span>
+                    <button class="bg-primary text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors shadow-lg" onclick="document.getElementById('topup-modal').classList.remove('hidden')">Top Up Credits</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- MODAL: TOP UP CREDITS                      -->
+    <!-- ========================================== -->
+    <div id="topup-modal" class="fixed inset-0 z-[100] hidden flex justify-center items-center">
+        <!-- Backdrop Blur -->
+        <div class="absolute inset-0 bg-white/60 backdrop-blur-md" onclick="this.parentElement.classList.add('hidden')"></div>
+        
+        <!-- Modal Card -->
+        <div class="relative bg-white border border-hairline w-full max-w-2xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] flex flex-col pt-8 pb-0 overflow-hidden transform scale-100 animate-[fadeIn_0.2s_ease-out]">
+            <button class="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 text-tertiary hover:text-primary transition-colors" onclick="document.getElementById('topup-modal').classList.add('hidden')"><i class="ph ph-x text-lg"></i></button>
+            
+            <div class="px-8 mb-6">
+                <h2 class="text-2xl font-medium tracking-tight mb-2 flex items-center gap-2"><i class="ph-fill ph-coin text-status-amber"></i> Top Up Credits</h2>
+                <p class="text-secondary text-sm">Current balance: <span class="font-semibold text-primary">15.25 credits</span></p>
+            </div>
+
+            <!-- Tiers Grid -->
+            <div class="px-8 grid grid-cols-2 gap-4 mb-8">
+                <!-- Option 1 -->
+                <div class="border border-hairline rounded-xl p-5 hover:border-black/30 cursor-pointer transition-colors relative flex flex-col">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-5 h-5 rounded-full border border-hairline bg-cream"></div>
+                            <span class="font-medium text-lg">20 <span class="text-sm font-normal text-secondary">Credits</span></span>
+                        </div>
+                        <span class="font-display text-lg">$10.00</span>
+                    </div>
+                </div>
+
+                <!-- Option 2 (Selected) -->
+                <div class="border-2 border-primary rounded-xl p-5 bg-white cursor-pointer relative flex flex-col shadow-sm">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] uppercase font-bold tracking-wider px-3 py-0.5 rounded-full">Popular</div>
+                    <div class="flex justify-between items-start mb-3 mt-1">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-5 h-5 rounded-full border-4 border-primary bg-white flex items-center justify-center shrink-0"></div>
+                            <span class="font-medium text-lg">50 <span class="text-sm font-normal text-secondary">Credits</span></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-tertiary line-through mr-1">$25.00</span>
+                            <span class="font-display text-lg">$23.00</span>
+                            <span class="block text-[10px] text-status-green font-bold bg-status-green/10 px-1 rounded inline-block mt-1">-8%</span>
+                        </div>
+                    </div>
+                    <!-- Value Bar -->
+                    <div class="h-1 w-full bg-black/5 rounded-full mt-auto"><div class="h-full bg-primary rounded-full w-[40%]"></div></div>
+                </div>
+
+                <!-- Option 3 -->
+                <div class="border border-hairline rounded-xl p-5 hover:border-black/30 cursor-pointer transition-colors relative flex flex-col bg-status-amber/5 border-status-amber/20">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-status-amber text-white text-[10px] uppercase font-bold tracking-wider px-3 py-0.5 rounded-full shadow-sm">Best Value</div>
+                    <div class="flex justify-between items-start mb-3 mt-1">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-5 h-5 rounded-full border border-status-amber/40 bg-white"></div>
+                            <span class="font-medium text-lg">100 <span class="text-sm font-normal text-secondary">Credits</span></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-tertiary line-through mr-1">$50.00</span>
+                            <span class="font-display text-lg text-amber-900">$44.00</span>
+                            <span class="block text-[10px] text-status-amber font-bold bg-white/50 px-1 rounded inline-block mt-1">-12%</span>
+                        </div>
+                    </div>
+                     <div class="h-1 w-full bg-status-amber/20 rounded-full mt-auto"><div class="h-full bg-status-amber rounded-full w-[70%]"></div></div>
+                </div>
+
+                <!-- Option 4 -->
+                <div class="border border-hairline rounded-xl p-5 hover:border-black/30 cursor-pointer transition-colors relative flex flex-col">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-5 h-5 rounded-full border border-hairline bg-cream"></div>
+                            <span class="font-medium text-lg">250 <span class="text-sm font-normal text-secondary">Credits</span></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-tertiary line-through mr-1">$125.00</span>
+                            <span class="font-display text-lg">$100.00</span>
+                            <span class="block text-[10px] text-status-green font-bold bg-status-green/10 px-1 rounded inline-block mt-1">-20%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer area -->
+            <div class="bg-gray-50 border-t border-hairline p-6 flex flex-col gap-4">
+                <div class="flex items-center justify-between text-sm">
+                    <div class="flex items-center gap-2 font-medium text-secondary"><i class="ph-fill ph-credit-card"></i> You'll receive <span class="text-black inline-block bg-white px-2 py-0.5 rounded shadow-sm border border-hairline">50 credits</span> for <span class="text-black">$23.00</span></div>
+                    <div class="text-status-green font-medium text-xs bg-status-green/10 px-2 py-1 flex items-center gap-2 rounded border border-status-green/20"><i class="ph-bold ph-arrow-up"></i> New balance after purchase: 65.25</div>
+                </div>
+                <!-- Controls -->
+                <div class="flex items-center justify-between mt-2">
+                    <div class="flex items-center gap-1.5 text-xs text-tertiary">
+                        <i class="ph-fill ph-lock-key"></i> Secured by Stripe
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="px-5 py-2.5 rounded-full text-sm font-medium hover:bg-black/5 transition-colors" onclick="document.getElementById('topup-modal').classList.add('hidden')">Cancel</button>
+                        <button class="px-6 py-2.5 rounded-full border border-black bg-black text-white text-sm font-medium hover:bg-gray-900 transition-colors shadow-lg flex items-center gap-2">Purchase Credits <i class="ph-bold ph-arrow-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+// Toggle View Logic
+function switchView(targetId) {
+    // Hide all major views
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+    // Show target
+    const target = document.getElementById(targetId);
+    if(target) target.classList.add('show');
+
+    // Manage nav selection states
+    document.querySelectorAll('[data-target]').forEach(el => {
+        el.classList.remove('nav-active', 'bg-black/5');
+        // Simple logic for the main sidebar links
+        if(el.classList.contains('nav-item')) {
+            el.classList.add('text-secondary');
+            el.classList.remove('text-primary');
+        }
+    });
+
+    // Highly specific logic just for visual prototype matching
+    const activeTrigger = document.querySelector(`[data-target="${targetId}"]`);
+    if(activeTrigger && activeTrigger.classList.contains('nav-item')) {
+        activeTrigger.classList.add('nav-active', 'text-primary');
+        activeTrigger.classList.remove('text-secondary');
+    }
+}
+
+// Global Nav Clicks
+document.querySelectorAll('[data-target]').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Prevent bubble if toggling collapsible
+        if(e.target.closest('.toggle-btn')) return;
+        switchView(link.getAttribute('data-target'));
+    });
+});
+
+// Inner Tab Logic (Company Context)
+const tabBtns = document.querySelectorAll('.tab-btn');
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const group = btn.getAttribute('data-tabgroup');
+        const targetId = btn.getAttribute('data-tab');
+        
+        // Update Buttons
+        document.querySelectorAll(`.tab-btn[data-tabgroup="${group}"]`).forEach(b => {
+            b.classList.remove('tab-active');
+            b.classList.add('tab-inactive');
+            b.style.borderColor = 'transparent';
+            b.style.color = '#6E6E6E';
+        });
+        btn.classList.add('tab-active');
+        btn.classList.remove('tab-inactive');
+        btn.style.borderColor = '#0A0A0A';
+        btn.style.color = '#0A0A0A';
+
+        // Update Sub-views
+        document.querySelectorAll(`.sub-view.${group}`).forEach(sv => sv.classList.remove('show'));
+        document.getElementById(targetId).classList.add('show');
+    });
+});
+
+// Drive Sub Tab Toggling
+function toggleDriveTab(state) {
+    const empty = document.getElementById('drive-empty');
+    const pending = document.getElementById('drive-pending');
+    if(state === 'pending') {
+        empty.style.opacity = '0';
+        setTimeout(() => { empty.classList.add('hidden'); pending.classList.remove('hidden'); pending.classList.add('flex'); }, 200);
+    } else {
+        pending.classList.add('hidden'); pending.classList.remove('flex');
+        empty.classList.remove('hidden');
+        setTimeout(() => { empty.style.opacity = '1'; }, 50);
+    }
+}
+
+// Collapsible Logic
+function toggleSection(btn) {
+    const content = btn.nextElementSibling;
+    const chevron = btn.querySelector('.ph-caret-right, .ph-caret-up');
+    if(content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        content.classList.add('flex');
+        if(chevron) chevron.style.transform = 'rotate(90deg)';
+        if(chevron && chevron.classList.contains('ph-caret-up')) chevron.style.transform = 'rotate(180deg)'; // Getting started exception
+    } else {
+        content.classList.add('hidden');
+        content.classList.remove('flex');
+        if(chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Popovers
+function togglePopover(id) {
+    const el = document.getElementById(id);
+    if(el.classList.contains('hidden')) {
+        // close others
+        document.querySelectorAll('.shadow-popover').forEach(p => { if(p.id !== id) p.classList.add('hidden'); });
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+// Close popovers on outside click
+document.addEventListener('click', (e) => {
+    if(!e.target.closest('#company-switcher') && !e.target.closest('.px-4.py-4')) {
+        document.getElementById('company-switcher')?.classList.add('hidden');
+    }
+    if(!e.target.closest('#user-menu') && !e.target.closest('.p-4.border-t')) {
+        document.getElementById('user-menu')?.classList.add('hidden');
+    }
+});
+</script>
+</body>
+</html>
