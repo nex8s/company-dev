@@ -12,7 +12,7 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 ---
 
 ## B-01 · 2026-04-17 01:05 · agent-B
-**Commit:** (pending push) on `feat/new-features`
+**Commit:** 0b9f54e0 on `feat/new-features` (pushed to origin)
 **Files:** packages/plugin-apps-builder/package.json (new), packages/plugin-apps-builder/tsconfig.json (new), packages/plugin-apps-builder/vitest.config.ts (new), packages/plugin-apps-builder/src/index.ts (new), packages/plugin-apps-builder/src/schema.ts (new), packages/plugin-apps-builder/src/apps.ts (new), packages/plugin-apps-builder/src/apps.test.ts (new), .agents/company-dev/checks/gate-B-01.sh (new), .agents/company-dev/questions/orchestrator.md (new on this branch)
 **Tests:** apps.test.ts › creates an App row with the required columns (pass), › attaches a channel to an existing App (pass), › throws when attaching a channel to an unknown App (pass)
 **Gate output (tail):**
