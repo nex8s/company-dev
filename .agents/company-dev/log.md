@@ -88,3 +88,52 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 **Environment note:** first push attempt collided with Agent C's session in the shared `~/company-dev` working tree — my scaffold files got stashed by agent-A as `ORPHANED-ON-C-BRANCH` (stash@{1}), my log/questions edits stranded on `feat/frontend-port` (stash@{0}). Per orchestrator guidance, now working in a dedicated `git worktree` at `~/company-dev-b` pinned to `feat/new-features`. Agents A, B, C should each hold their own worktree going forward.
 
 **Notes for next task (B-02):** `AppsRepository` is in-memory only. B-02 (apps builder worker loop) needs a Drizzle-backed implementation persisting to the `apps` table exported from this package, plus emission of Agent A's A-06 "via check-in" messages. A-03 and A-06 are the blockers; A-03 is next on Agent A's plan, A-06 later. Will stub + flag in `questions/orchestrator.md` at B-02 start if they haven't merged.
+---
+
+## A-02 · 2026-04-17 01:58 · agent-A
+**Commit:** 54dc7946 on `feat/backend-wiring` (pushed to origin)
+**Worktree:** `~/company-dev-a` (dedicated Agent-A worktree, created this session per orchestrator guidance after shared-worktree branch collisions on 2026-04-17 ~00:45)
+**Files:**
+- `packages/db/src/schema/company_profiles.ts` (new — Drizzle table)
+- `packages/db/src/schema/index.ts` (re-export)
+- `packages/db/src/migrations/0057_aberrant_baron_strucker.sql` (new — drizzle-generated forward migration)
+- `packages/db/src/migrations/meta/0057_snapshot.json` + `_journal.json` (drizzle-kit bookkeeping)
+- `packages/db/src/rollbacks/0057_aberrant_baron_strucker.down.sql` (new — hand-written rollback sibling)
+- `packages/plugin-company/src/schema.ts` (new — re-exports `companyProfiles` + typed `CompanyProfile` / `NewCompanyProfile` / `TrialState`)
+- `packages/plugin-company/src/index.ts` (re-exports `./schema.js`)
+- `packages/plugin-company/src/company-profile.test.ts` (new — embedded-postgres round-trip tests)
+- `packages/plugin-company/package.json` (adds `@paperclipai/db` + `drizzle-orm` deps)
+- `.agents/company-dev/checks/gate-A-02.sh` (new)
+- `pnpm-lock.yaml`
+
+**Tests:** `company-profile.test.ts`:
+- `round-trips an insert+select on a freshly-migrated database` (pass, 12.2s)
+- `enforces one profile per company (unique company_id)` (pass, 13.7s)
+- `cascades delete from companies to company_profiles` (pass, 13.9s)
+
+**Gate output (tail):**
+```
+ RUN  v3.2.4 /Users/deusnexus/company-dev-a/packages/plugin-company
+ ✓ src/index.test.ts (2 tests) 20ms
+ ✓ src/company-profile.test.ts (3 tests) 39832ms
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Duration  55.94s
+▶ gate-A-02: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: **260/262 files pass, 1485/1488 tests pass, 1 skipped, 2 failed** — both suite-parallelism flakes, verified passing in isolation:
+  - `server/src/__tests__/assets.test.ts › accepts PNG image uploads and returns an asset path` — timed out at 5s in full suite, passed in **1.9s isolated**.
+  - `paperclipai/src/__tests__/company-import-export-e2e.test.ts › exports a company package and imports it into new and existing companies` — timed out at 60s in full suite, passed in **26.8s isolated**.
+  - Same class as the Phase 0 (cli-auth-routes) and C-02 (issue-feedback-routes, openclaw-invite-prompt-route) flakes. A-02 touches only `packages/db/src/{schema,migrations,rollbacks}` and `packages/plugin-company/` — no server route code, no import/export code. Flagged for orchestrator follow-up.
+
+**Design decisions (for orchestrator review):**
+1. **Schema location** — ARCHITECTURE.md §3 says "Each table defined in `packages/plugin-<name>/src/schema.ts` and registered into Drizzle via a plugin hook Paperclip already exposes." However, `packages/db/drizzle.config.ts` only scans `./dist/schema/*.js`, and the "plugin hook" for schema registration is not yet wired. To avoid a Paperclip core edit, I placed the table definition in `packages/db/src/schema/company_profiles.ts` (consistent with existing precedents like `plugin_company_settings.ts`, `plugin_entities.ts`) and have `plugin-company/src/schema.ts` re-export it plus the Infer types. Flagging for future unification when a real plugin-schema registration hook lands.
+2. **Rollback location** — Agent A's hard rule specifies "`packages/db/migrations/NNNN_xxx.up.sql` + `NNNN_xxx.down.sql`". The existing Paperclip convention is `packages/db/src/migrations/NNNN_name.sql` (no `.up` suffix, no siblings), enforced by `check-migration-numbering.ts` which flags any two files with the same 4-digit prefix as duplicates. I placed the rollback in a new sibling directory `packages/db/src/rollbacks/` (not inside `migrations/`) so the Paperclip numbering check stays clean. The rollback is documentation-only — not auto-applied by the drizzle migrator.
+3. **Unique company_id** — enforced the 1:1 relation via `uniqueIndex("company_profiles_company_uq")` on `company_id` and asserted it in the test.
+4. **Cascade delete** — `ON DELETE cascade` from `companies.id`; verified in the test.
+5. **Trial state** — stored as `text` with default `'trial'`. Valid values documented as `trial | active | expired | paused` in the `TrialState` type alias. A-04's Getting Started state machine will drive transitions; A-02 only establishes the column.
+
+**Notes for next task (A-03):** Agent role seeding — "Naive (CEO)" seeded on company creation + factory for hiring dept agents (Engineering / Marketing / Operations / Sales / Support). Blocked-by: A-02 (just merged locally). Will land the seed logic in `packages/plugin-company/src/agents/factory.ts`; tests will spin up embedded-postgres via the same harness as A-02, apply migrations, create a company, and assert CEO seed + hireAgent tagging.

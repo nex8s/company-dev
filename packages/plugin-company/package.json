@@ -41,7 +41,9 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@paperclipai/shared": "workspace:*"
+    "@paperclipai/db": "workspace:*",
+    "@paperclipai/shared": "workspace:*",
+    "drizzle-orm": "^0.38.4"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
