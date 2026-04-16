@@ -20,6 +20,7 @@ export const youtubeLongForm: SeedTemplate = {
   employees: [
     {
       role: "Topic Researcher",
+      department: "marketing",
       model: "claude-opus-4-6",
       schedule: "weekly",
       responsibilities: [
@@ -30,6 +31,7 @@ export const youtubeLongForm: SeedTemplate = {
     },
     {
       role: "Storyliner",
+      department: "marketing",
       model: "claude-opus-4-6",
       schedule: "weekly",
       responsibilities: [
@@ -40,6 +42,7 @@ export const youtubeLongForm: SeedTemplate = {
     },
     {
       role: "Scriptwriter",
+      department: "marketing",
       model: "claude-opus-4-6",
       schedule: "per-video",
       responsibilities: [
@@ -50,6 +53,7 @@ export const youtubeLongForm: SeedTemplate = {
     },
     {
       role: "Producer",
+      department: "operations",
       model: "claude-sonnet-4-6",
       schedule: "per-video",
       responsibilities: [
@@ -60,6 +64,7 @@ export const youtubeLongForm: SeedTemplate = {
     },
     {
       role: "Promotion Lead",
+      department: "marketing",
       model: "claude-sonnet-4-6",
       schedule: "per-video",
       responsibilities: [

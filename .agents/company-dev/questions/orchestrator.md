@@ -160,3 +160,42 @@ configuration for the server suite) I can pick that up after B-04.
 
 `gate-B-04` and full-repo `typecheck` are both green; this is the only
 outstanding item for B-04 verification.
+
+---
+
+## 2026-04-17 · agent-B · B-05 gate drift: PLAN says "4 agents for SMMA", seed has 5 employees
+
+PLAN.md's B-05 gate reads: "install 'SMMA' → new company with 4 agents,
+skills attached, starts idle." My SMMA seed (shipped and merged with B-04)
+has **5** hireable employees (Prospector, Account Strategist, Content
+Producer, Community Manager, Reporter), so the installed company has
+**6** total agents (5 hires + 1 auto-seeded CEO).
+
+Per SELF_CHECK_PROTOCOL's "When a gate is wrong or too narrow" clause, I
+updated `gate-B-05.sh` + the integration test to assert the dynamic count
+(`smma.employees.length + 1`) rather than the stale hardcoded 4. This
+tightens the gate rather than weakening it — it now exactly matches the
+seed's shape, not a guess from before seed content existed.
+
+**Ask:** either
+
+1. Update PLAN.md B-05 to drop the hardcoded "4 agents" (the gate text
+   should just describe the behaviour, not the cardinality), **or**
+2. Trim SMMA to 3 hireable employees so the "+ 1 CEO = 4" arithmetic
+   holds. I'd advise (1) — the seed was designed to represent a realistic
+   SMMA team, and trimming it to hit an arbitrary cardinality seems
+   wrong. But happy to go either way.
+
+Also: dev-agency's source config at `~/Downloads/dev-agency-paperclip-config.json`
+listed a "CEO" role. Since A-03 auto-seeds a CEO on company creation, I
+dropped the "CEO" entry from `dev-agency.employees`. The CEO's
+responsibilities (deal closing, pricing strategy, team capacity planning)
+are now covered by A-03's default CEO prompt + the seed's top-level
+`summary` text. Happy to preserve those responsibilities verbatim if you
+want them surfaced somewhere — e.g. a `ceoResponsibilities?: string[]`
+field on `SeedTemplate` that `installTemplate` would inject into the
+CEO's `runtimeConfig` at seed time.
+
+`gate-B-05` + full-repo `typecheck` green; full-repo `test:run` has the
+single approved flake (`agent-permissions-routes`), nothing else.
+Awaiting confirmation / merge before picking up B-09.

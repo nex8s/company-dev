@@ -407,6 +407,13 @@
       "when": 1776377590266,
       "tag": "0057_aberrant_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1776382335396,
+      "tag": "0058_wise_pixie",
+      "breakpoints": true
     }
   ]
 }

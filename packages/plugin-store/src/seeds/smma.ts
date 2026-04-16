@@ -20,6 +20,7 @@ export const smma: SeedTemplate = {
   employees: [
     {
       role: "Prospector",
+      department: "sales",
       model: "claude-sonnet-4-6",
       schedule: "daily",
       responsibilities: [
@@ -30,6 +31,7 @@ export const smma: SeedTemplate = {
     },
     {
       role: "Account Strategist",
+      department: "sales",
       model: "claude-opus-4-6",
       schedule: "per-client",
       responsibilities: [
@@ -40,6 +42,7 @@ export const smma: SeedTemplate = {
     },
     {
       role: "Content Producer",
+      department: "marketing",
       model: "claude-sonnet-4-6",
       schedule: "weekly",
       responsibilities: [
@@ -50,6 +53,7 @@ export const smma: SeedTemplate = {
     },
     {
       role: "Community Manager",
+      department: "support",
       model: "claude-haiku-4-5",
       schedule: "every-2h",
       responsibilities: [
@@ -60,6 +64,7 @@ export const smma: SeedTemplate = {
     },
     {
       role: "Reporter",
+      department: "operations",
       model: "claude-haiku-4-5",
       schedule: "weekly",
       responsibilities: [

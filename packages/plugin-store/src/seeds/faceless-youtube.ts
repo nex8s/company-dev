@@ -20,6 +20,7 @@ export const facelessYoutube: SeedTemplate = {
   employees: [
     {
       role: "Niche Researcher",
+      department: "marketing",
       model: "claude-sonnet-4-6",
       schedule: "weekly",
       responsibilities: [
@@ -30,6 +31,7 @@ export const facelessYoutube: SeedTemplate = {
     },
     {
       role: "Scriptwriter",
+      department: "marketing",
       model: "claude-opus-4-6",
       schedule: "per-video",
       responsibilities: [
@@ -40,6 +42,7 @@ export const facelessYoutube: SeedTemplate = {
     },
     {
       role: "Voice Director",
+      department: "operations",
       model: "claude-haiku-4-5",
       schedule: "per-video",
       responsibilities: [
@@ -50,6 +53,7 @@ export const facelessYoutube: SeedTemplate = {
     },
     {
       role: "B-Roll Sourcer",
+      department: "operations",
       model: "claude-haiku-4-5",
       schedule: "per-video",
       responsibilities: [
@@ -60,6 +64,7 @@ export const facelessYoutube: SeedTemplate = {
     },
     {
       role: "Publisher",
+      department: "marketing",
       model: "claude-sonnet-4-6",
       schedule: "daily",
       responsibilities: [

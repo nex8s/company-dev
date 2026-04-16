@@ -18,17 +18,8 @@ export const devAgency: SeedTemplate = {
   ],
   employees: [
     {
-      role: "CEO",
-      model: "claude-opus-4-6",
-      schedule: "daily",
-      responsibilities: [
-        "Deal closing",
-        "Pricing strategy",
-        "Team capacity planning",
-      ],
-    },
-    {
       role: "Project Manager",
+      department: "operations",
       model: "claude-opus-4-6",
       schedule: "daily",
       responsibilities: [
@@ -39,6 +30,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "Backend Engineer",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "every 4h",
       responsibilities: [
@@ -49,6 +41,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "Frontend Engineer",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "every 4h",
       responsibilities: [
@@ -59,6 +52,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "Integrations Engineer",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "every 4h",
       responsibilities: [
@@ -69,6 +63,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "QA Engineer",
+      department: "engineering",
       model: "claude-haiku-4-5",
       schedule: "every 6h",
       responsibilities: [
@@ -79,6 +74,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "DevOps",
+      department: "engineering",
       model: "claude-haiku-4-5",
       schedule: "every 8h",
       responsibilities: [
@@ -89,6 +85,7 @@ export const devAgency: SeedTemplate = {
     },
     {
       role: "Client Comms",
+      department: "support",
       model: "claude-haiku-4-5",
       schedule: "every 4h",
       responsibilities: [
