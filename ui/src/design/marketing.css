@@ -1,0 +1,58 @@
+/* Marketing / landing custom utility classes ported from ui-import/landing.html.
+   Tailwind utilities cover the token colors and fonts; these named classes
+   encode multi-layer gradients and mask compositions that don't fit cleanly
+   into theme extensions. Keep names stable — components reference them
+   verbatim (bg-lines, bg-glow, dot-matrix, mask-cloud-left/right). */
+
+.bg-lines {
+  background-image: repeating-linear-gradient(
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+
+.bg-glow {
+  background: radial-gradient(
+    65% 50% at 50% 42%,
+    rgba(251, 249, 246, 0.5) 0%,
+    rgba(251, 249, 246, 0.4) 45%,
+    rgba(251, 249, 246, 0) 72%
+  );
+}
+
+.dot-matrix {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.5) 1.2px,
+    transparent 1.2px
+  );
+  background-size: 8px 8px;
+}
+
+.mask-cloud-left {
+  -webkit-mask-image:
+    radial-gradient(ellipse 50% 50% at 10% 90%, black 20%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 25% 70%, black 15%, transparent 60%),
+    radial-gradient(ellipse 35% 35% at 35% 85%, black 20%, transparent 65%),
+    radial-gradient(ellipse 30% 30% at 5% 60%, black 5%, transparent 45%);
+  mask-image:
+    radial-gradient(ellipse 50% 50% at 10% 90%, black 20%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 25% 70%, black 15%, transparent 60%),
+    radial-gradient(ellipse 35% 35% at 35% 85%, black 20%, transparent 65%),
+    radial-gradient(ellipse 30% 30% at 5% 60%, black 5%, transparent 45%);
+}
+
+.mask-cloud-right {
+  -webkit-mask-image:
+    radial-gradient(ellipse 55% 55% at 90% 95%, black 25%, transparent 65%),
+    radial-gradient(ellipse 45% 45% at 75% 75%, black 15%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 65% 85%, black 20%, transparent 65%),
+    radial-gradient(ellipse 35% 35% at 95% 65%, black 10%, transparent 50%);
+  mask-image:
+    radial-gradient(ellipse 55% 55% at 90% 95%, black 25%, transparent 65%),
+    radial-gradient(ellipse 45% 45% at 75% 75%, black 15%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 65% 85%, black 20%, transparent 65%),
+    radial-gradient(ellipse 35% 35% at 95% 65%, black 10%, transparent 50%);
+}
