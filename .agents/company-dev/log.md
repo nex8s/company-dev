@@ -88,3 +88,31 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 **Environment note:** first push attempt collided with Agent C's session in the shared `~/company-dev` working tree — my scaffold files got stashed by agent-A as `ORPHANED-ON-C-BRANCH` (stash@{1}), my log/questions edits stranded on `feat/frontend-port` (stash@{0}). Per orchestrator guidance, now working in a dedicated `git worktree` at `~/company-dev-b` pinned to `feat/new-features`. Agents A, B, C should each hold their own worktree going forward.
 
 **Notes for next task (B-02):** `AppsRepository` is in-memory only. B-02 (apps builder worker loop) needs a Drizzle-backed implementation persisting to the `apps` table exported from this package, plus emission of Agent A's A-06 "via check-in" messages. A-03 and A-06 are the blockers; A-03 is next on Agent A's plan, A-06 later. Will stub + flag in `questions/orchestrator.md` at B-02 start if they haven't merged.
+
+---
+
+## B-04 · 2026-04-17 02:10 · agent-B
+**Commit:** (pending push) on `feat/new-features`
+**Files:** packages/plugin-store/package.json (new), packages/plugin-store/tsconfig.json (new), packages/plugin-store/vitest.config.ts (new), packages/plugin-store/src/index.ts (new — `registerPlugin`), packages/plugin-store/src/schema.ts (new — `store_templates` table), packages/plugin-store/src/types.ts (new — `SeedTemplate`, `TemplateEmployee`, `StoreTemplateRecord`), packages/plugin-store/src/repo.ts (new — `InMemoryStoreTemplatesRepository`, `listTemplates`), packages/plugin-store/src/repo.test.ts (new — 8 tests), packages/plugin-store/src/seeds/{faceless-youtube,smma,youtube-long-form,b2b-outbound-machine,dev-agency,devops-monitoring-ops,index}.ts (7 new), .agents/company-dev/checks/gate-B-04.sh (new)
+**Tests:** repo.test.ts › loads exactly 6 seed templates (pass), › seeds each of the 6 expected slugs (pass), › every seed has the required shape (pass), › listTemplates filters by category (pass), › listTemplates filters by kind (pass), › listTemplates combines category + kind filters (pass), › getBySlug returns a loaded template (pass), › rejects duplicate seed slugs on a second loadSeeds (pass)
+**Gate output (tail):**
+```
+> @paperclipai/plugin-store@0.1.0 test:run
+> vitest run
+ RUN  v3.2.4 /Users/deusnexus/company-dev-b/packages/plugin-store
+ ✓ src/repo.test.ts (8 tests) 11ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Duration  422ms
+▶ gate-B-04: all checks passed
+```
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: 263 files total · 262 passed, 1 failed · 1492 tests passed, 1 failed, 1 skipped, wall 138s.
+  - Single failure: `agent-permissions-routes.test.ts > redacts agent detail for authenticated company members without agent admin permission` — 5037ms timeout in full suite, passes cleanly in **12s isolated (17/17 tests, every subtest ≤800ms)**.
+  - Same class/signature as the three orchestrator-approved environmental flakes (`cli-auth-routes`, `issue-feedback-routes`, `openclaw-invite-prompt-route`) — parallel suite contention on embedded-postgres. Requesting the orchestrator add this one to the approved list (see `questions/orchestrator.md`).
+  - This B-04 change is plugin-store only; zero touchpoints on server/agent-permissions code.
+
+**Seed sourcing:** The first 3 (`faceless-youtube`, `smma`, `youtube-long-form`) are fresh copy in my own voice. The last 3 (`b2b-outbound-machine`, `dev-agency`, `devops-monitoring-ops`) adapt the agent role definitions from `~/Downloads/*-paperclip-config.json` (renaming generic "Engineer" slots to `Backend Engineer` / `Frontend Engineer` / `Integrations Engineer` in dev-agency; title-casing responsibilities). Summaries and titles are written fresh; no marketing copy copied from the reference source.
+
+**Notes for next task:** B-05 (Store "Get" flow — install creates a new company + agents + skills in one transaction) depends on A-03 (agent seeding). B-06 (Store publishing — receives A-10 payload) depends on A-10. Neither is merged yet. Likely next: B-07 (Stripe — depends on A-07, not merged) or B-09/B-10/B-11/B-12 (provider interface stubs — all only blocked by A-01, which has merged). Will pick one of the provider stubs if nothing unblocks more meaningfully.
