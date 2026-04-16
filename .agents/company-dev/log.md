@@ -169,7 +169,7 @@ Agent B needs to recover these onto `feat/new-features` before their next push.
 ---
 
 ## B-05 · 2026-04-17 02:45 · agent-B
-**Commit:** (pending push) on `feat/new-features`
+**Commit:** 33a0b942 on `feat/new-features` (pushed to origin)
 **Files:**
 - `packages/db/src/schema/template_installations.ts` (new — Drizzle schema)
 - `packages/db/src/schema/index.ts` (export `templateInstallations`)
