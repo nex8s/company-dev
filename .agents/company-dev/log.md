@@ -195,4 +195,45 @@ Test Files  1 passed (1)
 - Dev-preview banner is visible at the top of every Landing render; its copy lives in `landing.devPreview`. Remove the banner and the TODOs in the same commit that runs gate-C-14.sh.
 
 **Notes for next task:** C-03 (Company shell) is the biggest downstream consumer and needs A-01 (plugin-company package, DONE), A-02 (CompanyProfile schema, in progress on feat/backend-wiring), and A-04 (Getting Started state machine) before I can wire real data. While those settle, picking up follow-ups that don't block on A-*: likely re-visit C-01 to harden (marquee band if the prototype adds one in a dashboard-level section, responsive nav menu on mobile, proper `<header>` → `<body>` spacing sans the dev banner when C-14 runs). Waiting for Orchestrator confirmation before starting next task per SELF_CHECK rule 11.
+## A-03 · 2026-04-17 02:12 · agent-A
+**Commit:** 95532bc2 on `feat/backend-wiring` (pushed to origin; rebased on origin/master containing 3d830650 A-02 + 646dd3eb B-01)
+**Files:**
+- `packages/plugin-company/src/agents/prompts.ts` (new — Department type, HIREABLE_DEPARTMENTS, DEFAULT_SYSTEM_PROMPTS, DEFAULT_DEPARTMENT_TITLES)
+- `packages/plugin-company/src/agents/factory.ts` (new — seedCompanyAgents, hireAgent, findCeo, listDirectReports)
+- `packages/plugin-company/src/agents/factory.test.ts` (new — 7 embedded-postgres round-trip tests)
+- `packages/plugin-company/src/index.ts` (re-exports factory + prompts)
+- `.agents/company-dev/checks/gate-A-03.sh` (new)
+
+**Tests:** `factory.test.ts`:
+- `seedCompanyAgents yields a single CEO with 0 direct reports` (pass, 7.2s)
+- `seedCompanyAgents is idempotent — re-seeding returns the original CEO` (pass, 5.1s)
+- `hireAgent(dept='Marketing') tags the new agent with the correct department` (pass, 5.7s)
+- `hireAgent supports all five hireable departments with distinct prompts` (pass, 5.4s)
+- `hireAgent rejects the ceo department and unknown departments` (pass, 5.6s)
+- `hireAgent throws when no CEO has been seeded yet and reportsTo is not explicit` (pass, 5.4s)
+- `findCeo returns null for a company with no seeded CEO` (pass, 5.5s)
+
+**Gate output (tail):**
+```
+ RUN  v3.2.4 /Users/deusnexus/company-dev-a/packages/plugin-company
+ ✓ src/agents/factory.test.ts (7 tests) 40127ms
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Duration  49.39s
+▶ gate-A-03: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0). Initial typecheck failed in `packages/plugin-apps-builder` with `Cannot find module 'drizzle-orm/pg-core'` — B's newly-merged package needed a fresh `pnpm install` after the rebase onto master pulled in its workspace entry. After reinstalling, typecheck was clean.
+- `pnpm test:run`: **263/263 files pass, 1493/1494 tests pass, 1 skipped, 0 failed**, exit 0. Clean run — none of the previously-observed suite-parallelism flakes (assets, company-import-export-e2e, cli-auth-routes, issue-feedback-routes, openclaw-invite-prompt-route) reproduced.
+
+**Design decisions:**
+1. **Department tagging via `agents.role`** — the existing `agents` table already has a `role` text column defaulted to `"general"`. Rather than introduce a new schema column, I store the department tag as `role = "ceo" | "engineering" | "marketing" | "operations" | "sales" | "support"`. This avoids a migration and matches the spirit of the role column.
+2. **System prompt storage via `runtimeConfig.systemPrompt`** — the `agents.runtimeConfig` jsonb column is already treated as the per-agent runtime config bag by `server/src/services/agents.ts` (it's in `CONFIG_REVISION_FIELDS`). I store the default system prompt as `runtimeConfig.systemPrompt`. No new column required.
+3. **Idempotent seeding** — `seedCompanyAgents` is safe to call multiple times: if a CEO already exists for the company, it returns the existing row. This makes the eventual wiring into a "company created" hook trivial.
+4. **hireAgent defaults `reportsTo` to CEO** — the common case. If a caller wants to build a flatter org (e.g. during tests) they can pass `reportsTo: null` explicitly. If they hire before seeding, `hireAgent` throws with a clear message pointing at `seedCompanyAgents`.
+5. **Title per department** — stored in `agents.title` using the `DEFAULT_DEPARTMENT_TITLES` catalog. Simple capitalized English (`"CEO"`, `"Marketing"`). Not wired to the `CompanyProfile.name` — the department title is a role label, not a unit name.
+6. **No company-creation hook yet** — A-03 provides the factory primitives. Wiring them into Paperclip's actual company-creation code path would be a Paperclip core edit (server/src/services/companies.ts or equivalent) and is explicitly out of scope. Callers today invoke `seedCompanyAgents` after creating the company themselves; the hook wiring can land in a later task (or via the "plugin hook" the ARCHITECTURE.md references once Paperclip exposes one).
+
+**Notes for next task (A-04):** Getting Started checklist state machine — 7 steps (Incorporate, Domain, Email inboxes, Stripe billing, Deploy first app, Google Search Console, Custom dashboard pages), each completable programmatically, progress persisted per company. Blocked-by: A-02 (merged). Will add a `getting_started` schema (one row per company per step or one jsonb blob per company — likely blob for compactness) plus a state machine that surfaces progress as `completed/total`. No dependency on A-03 strictly — these steps can be completed before any CEO is seeded.
 
