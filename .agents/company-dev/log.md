@@ -237,3 +237,38 @@ Test Files  1 passed (1)
 
 **Notes for next task (A-04):** Getting Started checklist state machine — 7 steps (Incorporate, Domain, Email inboxes, Stripe billing, Deploy first app, Google Search Console, Custom dashboard pages), each completable programmatically, progress persisted per company. Blocked-by: A-02 (merged). Will add a `getting_started` schema (one row per company per step or one jsonb blob per company — likely blob for compactness) plus a state machine that surfaces progress as `completed/total`. No dependency on A-03 strictly — these steps can be completed before any CEO is seeded.
 
+---
+
+## C-03 · 2026-04-17 02:38 · agent-C
+**Commit:** 4dafe54d on `feat/frontend-port` (pushed to origin)
+**Worktree:** `~/company-dev-c/`, rebased onto origin/master (4712000a → now 084ef70e at pull time; clean rebase, no conflicts).
+**Files:** ui/src/pages/CompanyShell.tsx (new — ~600-line single file with local sub-components: `Sidebar`, `CompanySwitcher`, `ReviewPill`, `SidebarPrimaryNav`, `AppsSection`, `TeamSection`, `DeptGroup`, `GettingStartedPanel`, `SidebarFooter`, `UserMenu`, `CompanyBreadcrumb`, `MainContentPlaceholder`, plus `CompanyShellSkeleton` and `CompanyShellError` for the data-bound render branches), ui/src/pages/CompanyShell.test.tsx (new — jsdom, 10 tests), ui/src/copy/company-shell.ts (new — every shell string, including dept titles, tab labels, trial banner, Getting Started step copy, user-menu items), ui/src/hooks/useCompanyShellData.ts (new — typed mock data facade with `TODO(A-02/A-03/A-04/A-05/B-02 HTTP)` swap points), ui/src/App.tsx (modified — adds `<Route path="c/:companyId/*" element={<CompanyShell />} />` inside CloudAccessGate, BEFORE the `:companyPrefix` catch-all), .agents/company-dev/checks/gate-C-03.sh (new)
+**Tests:** CompanyShell.test.tsx › mounts without throwing and lays out sidebar + breadcrumb + main (pass), › renders every sidebar section (pass), › renders the five breadcrumb sub-tabs with Chat marked active by default (pass), › marks Overview active when the url is /c/:companyId/overview (pass), › navigates to the tab route when a breadcrumb tab is clicked (pass), › opens the company switcher popover on click (pass), › opens the review-pill popover on click and shows the Approve + Reject buttons for each pending review (pass), › opens the user menu popover and exposes all six menu items (pass), › switches company when a non-active option is clicked in the switcher (pass — Store shortcut navigates to /c/:id/store), › dept group toggles its Collapsible content on click (pass)
+**Gate output (tail):**
+```
+✓ built in 47.80s
+RUN  v3.2.4 /Users/deusnexus/company-dev-c/ui
+ ✓ src/pages/CompanyShell.test.tsx (10 tests) 3121ms
+Test Files  1 passed (1)
+     Tests  10 passed (10)
+▶ gate-C-03: all checks passed
+```
+**Full-repo checks:**
+- `pnpm typecheck`: initial run failed with `packages/plugin-store` reporting "node_modules missing, did you mean to install?" — B-04's freshly-merged package needed `pnpm install` after the rebase pulled in its workspace entry. After reinstalling, typecheck was all `Done`.
+- `pnpm test:run`: **264/265 files pass, 1511/1513 tests pass, 1 skipped**, exit 1 from **one new environmental flake** → `server/src/__tests__/issue-activity-events-routes.test.ts › issue activity event routes › logs explicit reviewer and approver activity when execution policy participants change` (timeout at 5s in the full parallel suite, passes in 1.6s isolated — same class as the declared environmental-flake set cli-auth-routes / issue-feedback-routes / openclaw-invite-prompt-route). C-03 touches only `ui/` and `.agents/`; zero server code. Per the orchestrator's declared policy ("If ONLY those fail and your gate passes, you're clear to commit"), committing — but flagging the new test id so the known-flake list grows in one visible place. Updating `.agents/company-dev/questions/orchestrator.md` as well.
+
+**Scope notes:**
+- **Route wiring landed.** `/c/:companyId/*` is now live inside CloudAccessGate. The `c` literal sits before the `:companyPrefix` catch-all so RR v7's match ranking handles it first. Tested via mock of `@/lib/router`; full in-app exercise will follow when C-04 (Chat) renders real content under that route.
+- **A-04 dependency stubbed as a spec-match mock.** The Getting Started panel reads `{id, done}` rows from `useCompanyShellData.gettingStarted`. When A-04 lands, replace the block with `useQuery(plugin-company.getGettingStarted(companyId))` that returns the same shape. One step (`"deploy"`) mocked as done to match the prototype's 1/7 preview.
+- **A-05 pending reviews stubbed similarly.** One review mocked (`Create Content Calendar · Growth Marketer`) so the review-pill popover has real content to render in tests.
+- **Loading + error branches implemented** (hard rule: "Every data-bound component has a skeleton state AND an error state") — `CompanyShellSkeleton` (role="status" aria-busy) and `CompanyShellError` (role="alert"). Not exercised by the current tests because the mock always returns loaded state; a vi.mock override can cover both branches in a later tightening pass if the orchestrator wants it.
+- **Shared popover primitive** — shadcn/radix `Popover` from `@/components/ui/popover` for the three popovers (switcher, review pill, user menu); `Collapsible` for dept groups and Getting Started. Zero bespoke close-on-outside-click logic.
+- **Department titles** are inline-duplicated from `@paperclipai/plugin-company`'s `DEFAULT_DEPARTMENT_TITLES` to keep `ui/` free of a backend-plugin workspace dep for now. If the list grows or gains localization, consolidate into a shared package.
+
+**C-14 ground prep:**
+- `ui/src/copy/company-shell.ts` is the single grep target for all sidebar/breadcrumb copy.
+- Trial banner label is marked `TODO(C-14): final trial-banner voice from user.`.
+- No reference-brand-name appears anywhere in the shell files; gate-C-03 verifies.
+
+**Notes for next task:** C-04 (Company > Chat view) and C-06 (Tasks kanban) are both newly unblocked — C-04 by A-03 (CEO seeded) + A-06 (check-in messages; not yet started per PLAN). C-05 (Overview / Strategy / Payments / Settings tabs) depends on A-02 (merged) + B-08 (not started). C-06 depends on A-05 (not started). Fastest unblocked path for me is probably **C-13 E2E harness scaffold** (tests/e2e-company-dev/, Playwright config, first smoke test that loads `/` or `/c/:companyId` against the dev server) — unblocks the deferred visual-diff pieces in gate-C-01 + gate-C-03 and lays ground for every later gate that needs browser-level verification. Waiting for Orchestrator confirmation per SELF_CHECK rule 11.
+
