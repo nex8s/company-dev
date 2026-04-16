@@ -16,6 +16,8 @@
 export * from "./schema.js";
 export * from "./agents/factory.js";
 export * from "./agents/prompts.js";
+export * from "./getting-started/checklist.js";
+export * from "./getting-started/steps.js";
 
 export interface CompanyPluginRegistration {
   readonly name: "plugin-company";

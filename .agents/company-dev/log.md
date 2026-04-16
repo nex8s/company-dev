@@ -237,3 +237,61 @@ Test Files  1 passed (1)
 
 **Notes for next task (A-04):** Getting Started checklist state machine — 7 steps (Incorporate, Domain, Email inboxes, Stripe billing, Deploy first app, Google Search Console, Custom dashboard pages), each completable programmatically, progress persisted per company. Blocked-by: A-02 (merged). Will add a `getting_started` schema (one row per company per step or one jsonb blob per company — likely blob for compactness) plus a state machine that surfaces progress as `completed/total`. No dependency on A-03 strictly — these steps can be completed before any CEO is seeded.
 
+---
+
+## A-04 · 2026-04-17 02:22 · agent-A
+**Commit:** 0cff2cfb on `feat/backend-wiring` (pushed to origin; rebased on origin/master containing 084ef70e A-03 + 1d9ff22e C-01 + fa91e5f3 B-04)
+**Files:**
+- `packages/db/src/schema/getting_started.ts` (new — one-row-per-company jsonb)
+- `packages/db/src/schema/index.ts` (re-export)
+- `packages/db/src/migrations/0058_loving_richard_fisk.sql` (new — drizzle-generated)
+- `packages/db/src/migrations/meta/0058_snapshot.json` + `_journal.json`
+- `packages/db/src/rollbacks/0058_loving_richard_fisk.down.sql` (new)
+- `packages/plugin-company/src/getting-started/steps.ts` (new — `GETTING_STARTED_STEPS`, `GETTING_STARTED_TITLES`, `GETTING_STARTED_TOTAL` = 7)
+- `packages/plugin-company/src/getting-started/checklist.ts` (new — `getChecklist`, `completeStep`, `resetStep`)
+- `packages/plugin-company/src/getting-started/checklist.test.ts` (new — 8 embedded-postgres round-trip tests)
+- `packages/plugin-company/src/index.ts` (re-exports new modules)
+- `.agents/company-dev/checks/gate-A-04.sh` (new)
+
+**Tests:** `checklist.test.ts`:
+- `initializes a fresh checklist with 0/7 and all seven steps` (pass, 1.06s)
+- `completing one step yields progress 1/7 (gate: complete step 5)` (pass, 1.02s)
+- `subsequent steps complete independently and progress increments` (pass, 1.04s)
+- `completing the same step twice is idempotent (first completedAt preserved)` (pass, 1.04s)
+- `state survives a restart (fresh client connected to the same DB sees the same state)` (pass, 1.06s)
+- `resetStep returns a completed step to not-completed` (pass, 1.05s)
+- `completeStep rejects unknown step keys` (pass, 1.05s)
+- `progress is isolated per company (completing one company's step does not touch another's)` (pass, 1.06s)
+
+**Gate output (tail):**
+```
+ RUN  v3.2.4 /Users/deusnexus/company-dev-a/packages/plugin-company
+ ✓ src/getting-started/checklist.test.ts (8 tests) 8383ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Duration  9.66s
+▶ gate-A-04: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0). First pass failed on `plugin-store` with "node_modules missing" — B-04 landed a new workspace package since my last install; `pnpm install` picked it up and typecheck went green.
+- `pnpm test:run`: **264/264 files pass, 1502/1503 tests pass, 1 skipped, 0 failed**, exit 0. Clean run — no flakes.
+
+**Design decisions:**
+1. **Storage shape — one row per company with jsonb `steps` map** (not one row per (company, step)). Reasoning: the checklist is always read as a whole for the sidebar UI, updates are atomic, and 7 steps is tiny. A per-row design would have given nicer query-by-step semantics we don't need and added 7x the rows per company for no payoff. The unique index on `company_id` enforces 1:1.
+2. **Lazy initialization** — `getChecklist` uses `INSERT … ON CONFLICT DO NOTHING` + refetch so callers never need to explicitly create the checklist row. Caller is just `getChecklist(db, companyId)`; no `initializeChecklist` ceremony. This is especially useful for C-03 rendering the sidebar before any step is completed.
+3. **Step catalog as `const` tuple + string-union type** — `GETTING_STARTED_STEPS` is `readonly [...]`, `GettingStartedStep` is the union. `isGettingStartedStep` narrows unknown strings at runtime, which is how `completeStep`/`resetStep` reject typos before touching the DB.
+4. **Idempotent `completeStep`** — re-completing a step is a no-op; the original `completedAt` is preserved. This maps cleanly to "step fired an event, but we're not sure if we've already recorded it" semantics. `resetStep` is the escape hatch for support / test flows.
+5. **Per-company isolation** — asserted explicitly in a test: completing company A's step leaves company B at 0/7. This is also naturally guaranteed by the unique index but worth pinning down in case the storage shape ever changes.
+
+**Notes for next task (A-05):** "1 review waiting" queue — `PendingReview` table, `listPendingReviews(companyId)` query, approve/reject transitions. Blocked-by: A-03 (merged). Will add a `pending_reviews` schema referencing the `agents` and `issues` / `tasks` tables (need to pick which — PLAN.md A-05 just says "flips task status", so presumably Paperclip's existing `issues` or a dedicated task concept; will inspect on arrival). The review queue is what the sidebar's "1 review waiting" pill is wired to, so A-05 is a prerequisite for C-06 (tasks kanban approve/reject action).
+
+**Orchestrator-facing summary:** A-04 unblocks **C-03** (company shell — sidebar's Getting Started panel). The public plugin API the UI can consume:
+
+```ts
+import { getChecklist, completeStep, type Checklist } from "@paperclipai/plugin-company";
+// Checklist = { companyId, completed: number, total: 7, steps: ChecklistStep[] }
+// ChecklistStep = { key, title, completedAt: Date | null }
+```
+
+
