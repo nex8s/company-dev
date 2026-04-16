@@ -1,4 +1,10 @@
 import { pgTable, uuid, text, jsonb, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { templateInstallations } from "@paperclipai/db";
+
+export { templateInstallations };
+
+export type TemplateInstallationRow = typeof templateInstallations.$inferSelect;
+export type NewTemplateInstallationRow = typeof templateInstallations.$inferInsert;
 
 export const storeTemplates = pgTable(
   "store_templates",

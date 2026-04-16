@@ -18,6 +18,7 @@ export const devopsMonitoringOps: SeedTemplate = {
   employees: [
     {
       role: "Monitor Agent",
+      department: "engineering",
       model: "claude-haiku-4-5",
       schedule: "every-1-min",
       responsibilities: [
@@ -28,6 +29,7 @@ export const devopsMonitoringOps: SeedTemplate = {
     },
     {
       role: "Triage Agent",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "on-alert",
       responsibilities: [
@@ -38,6 +40,7 @@ export const devopsMonitoringOps: SeedTemplate = {
     },
     {
       role: "Auto-Remediation Agent",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "on-alert",
       responsibilities: [
@@ -48,6 +51,7 @@ export const devopsMonitoringOps: SeedTemplate = {
     },
     {
       role: "Comms Agent",
+      department: "support",
       model: "claude-haiku-4-5",
       schedule: "on-incident",
       responsibilities: [
@@ -58,6 +62,7 @@ export const devopsMonitoringOps: SeedTemplate = {
     },
     {
       role: "Post-Mortem Writer",
+      department: "engineering",
       model: "claude-sonnet-4-6",
       schedule: "post-incident",
       responsibilities: [

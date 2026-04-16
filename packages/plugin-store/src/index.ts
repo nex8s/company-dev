@@ -1,7 +1,16 @@
-export { storeTemplates } from "./schema.js";
-export type { StoreTemplateRow, NewStoreTemplateRow } from "./schema.js";
+export {
+  storeTemplates,
+  templateInstallations,
+} from "./schema.js";
+export type {
+  StoreTemplateRow,
+  NewStoreTemplateRow,
+  TemplateInstallationRow,
+  NewTemplateInstallationRow,
+} from "./schema.js";
 export type {
   TemplateKind,
+  TemplateDepartment,
   TemplateEmployee,
   SeedTemplate,
   StoreTemplateRecord,
@@ -15,6 +24,16 @@ export type {
   ListTemplatesOptions,
 } from "./repo.js";
 export { seedTemplates } from "./seeds/index.js";
+export {
+  installTemplate,
+  getInstalledSkills,
+  getInstallationForCompany,
+  countAgentsForCompany,
+} from "./install.js";
+export type {
+  InstallTemplateInput,
+  InstallTemplateResult,
+} from "./install.js";
 
 import { storeTemplates } from "./schema.js";
 

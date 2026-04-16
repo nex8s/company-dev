@@ -18,6 +18,7 @@ export const b2bOutboundMachine: SeedTemplate = {
   employees: [
     {
       role: "ICP Sourcer",
+      department: "sales",
       model: "claude-sonnet-4-6",
       schedule: "daily",
       responsibilities: [
@@ -28,6 +29,7 @@ export const b2bOutboundMachine: SeedTemplate = {
     },
     {
       role: "Enrichment Agent",
+      department: "sales",
       model: "claude-sonnet-4-6",
       schedule: "per-prospect",
       responsibilities: [
@@ -38,6 +40,7 @@ export const b2bOutboundMachine: SeedTemplate = {
     },
     {
       role: "Copywriter Agent",
+      department: "sales",
       model: "claude-opus-4-6",
       schedule: "per-prospect",
       responsibilities: [
@@ -48,6 +51,7 @@ export const b2bOutboundMachine: SeedTemplate = {
     },
     {
       role: "Send & Track Agent",
+      department: "sales",
       model: "claude-haiku-4-5",
       schedule: "daily",
       responsibilities: [
@@ -58,6 +62,7 @@ export const b2bOutboundMachine: SeedTemplate = {
     },
     {
       role: "Lead Qualifier",
+      department: "sales",
       model: "claude-sonnet-4-6",
       schedule: "on-reply",
       responsibilities: [

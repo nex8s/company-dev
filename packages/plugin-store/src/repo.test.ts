@@ -44,6 +44,7 @@ describe("plugin-store · StoreTemplatesRepository", () => {
       expect(t.employees.length).toBeGreaterThan(0);
       for (const emp of t.employees) {
         expect(emp.role.length).toBeGreaterThan(0);
+        expect(emp.department).toMatch(/^(engineering|marketing|operations|sales|support)$/);
         expect(emp.model.length).toBeGreaterThan(0);
         expect(emp.schedule.length).toBeGreaterThan(0);
         expect(Array.isArray(emp.responsibilities)).toBe(true);

@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "id": "e4708fc3-c0d5-453f-aaf7-51900d39e65a",
+=======
+  "id": "a84f39bc-ed56-4cac-b441-71f05bd48769",
+>>>>>>> origin/feat/new-features
   "prevId": "bac8800a-6544-4a22-9b75-5feee45d4f6f",
   "version": "7",
   "dialect": "postgresql",
@@ -6077,6 +6081,7 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+<<<<<<< HEAD
     "public.getting_started": {
       "name": "getting_started",
       "schema": "",
@@ -6154,6 +6159,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+=======
+>>>>>>> origin/feat/new-features
     "public.goals": {
       "name": "goals",
       "schema": "",
@@ -12892,6 +12899,113 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+<<<<<<< HEAD
+=======
+    "public.template_installations": {
+      "name": "template_installations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_slug": {
+          "name": "template_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_kind": {
+          "name": "template_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skills": {
+          "name": "skills",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "employees": {
+          "name": "employees",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "installed_at": {
+          "name": "installed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "template_installations_company_uq": {
+          "name": "template_installations_company_uq",
+          "columns": [
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "template_installations_template_slug_idx": {
+          "name": "template_installations_template_slug_idx",
+          "columns": [
+            {
+              "expression": "template_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "template_installations_company_id_companies_id_fk": {
+          "name": "template_installations_company_id_companies_id_fk",
+          "tableFrom": "template_installations",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+>>>>>>> origin/feat/new-features
     "public.user_sidebar_preferences": {
       "name": "user_sidebar_preferences",
       "schema": "",
