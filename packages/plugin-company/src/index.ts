@@ -13,6 +13,8 @@
  *   - Publishing → Store bridge
  */
 
+export * from "./schema.js";
+
 export interface CompanyPluginRegistration {
   readonly name: "plugin-company";
   readonly version: string;
