@@ -24,6 +24,7 @@ import { ApprovalDetail } from "./pages/ApprovalDetail";
 import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
+import { CompanyShell } from "./pages/CompanyShell";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanySkills } from "./pages/CompanySkills";
 import { CompanyExport } from "./pages/CompanyExport";
@@ -357,6 +358,11 @@ export function App() {
           <Route path="execution-workspaces/:workspaceId/issues" element={<UnprefixedBoardRedirect />} />
           <Route path="tests/ux/chat" element={<UnprefixedBoardRedirect />} />
           <Route path="tests/ux/runs" element={<UnprefixedBoardRedirect />} />
+          {/* Company.dev shell — C-03. Literal `c` segment sits before the
+              generic :companyPrefix catch-all so React Router matches it
+              first. Child routes (Chat, Overview, Strategy, Payments,
+              Settings, Tasks, Drive, Store, Team, Apps) land in C-04 → C-12. */}
+          <Route path="c/:companyId/*" element={<CompanyShell />} />
           <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
           </Route>

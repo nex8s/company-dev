@@ -160,3 +160,33 @@ configuration for the server suite) I can pick that up after B-04.
 
 `gate-B-04` and full-repo `typecheck` are both green; this is the only
 outstanding item for B-04 verification.
+
+---
+
+## 2026-04-17 · agent-C · C-03: one more env flake on the list
+
+Full-suite during C-03 verification hit one new-id failure, same class:
+
+- `server/src/__tests__/issue-activity-events-routes.test.ts > issue activity event routes > logs explicit reviewer and approver activity when execution policy participants change` — timeout at 5s in full parallel suite.
+
+Isolated repro:
+
+```
+pnpm --filter "@paperclipai/server" exec vitest run \
+  src/__tests__/issue-activity-events-routes.test.ts
+# → 2/2 pass in 3.18s (this subtest: ~1.6s)
+```
+
+C-03 touches only `ui/` and `.agents/`. No server or db code changed.
+Per your declared env-flake policy ("If ONLY those fail and your gate
+passes, you're clear to commit") I'm committing — flagging here so the
+known-flake list grows in one place.
+
+Running total of env-flake test ids observed so far: cli-auth-routes,
+issue-feedback-routes, openclaw-invite-prompt-route,
+agent-permissions-routes, **issue-activity-events-routes** (new with C-03).
+5 distinct tests, all server-embedded-postgres, all pass isolated in
+1–2s. If you'd like me to pick up the root-cause work (per-test timeout
+bump, `pool: "forks"` for the server suite, or a `.agents/test-lock`
+serialization convention) I'm happy to own it between C-tasks — just say
+the word.
