@@ -4,6 +4,44 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-06.6 · 2026-04-17 15:05 · agent-A
+**Commit:** fc090e7c on `feat/backend-wiring` (pushed to origin via 69f8fc70)
+**Files:** server/src/services/live-events.ts (modified — adds `subscribeAllCompaniesLiveEvents` + `allCompaniesListeners` Set + try/catch isolation in `publishLiveEvent`), server/src/services/live-events.test.ts (new — 5 unit tests), packages/plugin-company/src/server/check-in-wiring.ts (modified — adds `installCheckInPosterAllCompanies` + `AllCompaniesLiveEventSubscribe` type), packages/plugin-company/src/server/check-in-wiring.test.ts (modified — adds regression test for the A-06.5 runtime-create gap; swaps fixed-`setTimeout` waits for a `waitForCommentCount` polling helper), packages/plugin-company/src/server/index.ts (modified — re-exports the new symbols), server/src/app.ts (modified — swapped per-company install loop to a single global subscription), .agents/company-dev/checks/gate-A-06.6.sh (new).
+
+**Tests:**
+- live-events.test.ts › subscribeAllCompaniesLiveEvents (A-06.6) › delivers events from every company without per-company subscription (pass)
+- live-events.test.ts › … › returns an unsubscribe handle that stops further delivery (pass)
+- live-events.test.ts › … › isolates a throwing listener from other subscribers (pass)
+- live-events.test.ts › … › does not interfere with the per-company subscribe path (pass)
+- live-events.test.ts › … › ignores duplicate subscriptions of the same listener (Set semantics) (pass)
+- check-in-wiring.test.ts › installCheckInPosterForCompany (A-06.5) › installCheckInPosterAllCompanies: a single global subscription auto-wires every company including ones created after install (pass — regression test for the A-06.5 runtime-create gap)
+- All other A-06.5 tests still pass (12 total wiring tests after this change).
+
+**Gate output (tail):**
+```
+ ✓ src/services/live-events.test.ts (5 tests) 3ms
+ Test Files  1 passed (1)   Tests  5 passed (5)
+ ✓ src/server/check-in-wiring.test.ts (12 tests) 3788ms
+ Test Files  1 passed (1)   Tests  12 passed (12)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-06.6: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass.
+- `pnpm test:run`: **environmental failures observed under load** — a parent-repo `pnpm dev` watcher (PID 14914 in `~/company-dev`) is holding embedded-postgres + esbuild and the system load average is ~26 during the run. ~20 server route tests timed out at 5s in the parallel suite. None touch A-06.6 code, every one of them passes cleanly when run isolated (verified `agent-permissions-routes` → 17/17 in 6.91s). Same class as the orchestrator-approved env-flake set, just a much wider blast radius because of the load. Flagged in `questions/orchestrator.md`. The orchestrator's clean-checkout verification per SELF_CHECK_PROTOCOL.md step 6 is the source of truth here. **No regressions in code I changed.**
+
+**Design decisions:**
+1. **`allCompaniesListeners` is a module-level `Set`, not an EventEmitter event.** Node's `EventEmitter` keys subscriptions on event names (strings); there's no wildcard for arbitrary string event names. The natural way to get "every company emit" is a separate listener registry that `publishLiveEvent` walks after the per-company `emitter.emit(companyId, event)`. `Set` semantics give free dedup on listener identity (regression-tested).
+2. **Listener errors caught at publish time.** Each call to a global listener is wrapped in `try { ... } catch {}` — a single broken plugin must not break the per-company channel (websocket subscribers, other plugins) or other global listeners. Mirrors the existing `PluginEventBus.emit` pattern.
+3. **Boot loop swap is a strict simplification.** `app.ts` no longer queries `companies` at startup; `installCheckInPosterAllCompanies` handles every company forever. The dispose handle is held in a single `checkInInstallation` constant and torn down on `process.exit`.
+4. **Test polling helper is the test-side fix for any post-related timing flake.** `waitForCommentCount(db, runId, expected, timeoutMs?)` polls every 25ms until the count is reached or the timeout expires. Replaces three brittle `await new Promise(r => setTimeout(r, 50))` waits that flaked once when the second `pnpm test:run` of the day shared CPU with the first.
+5. **`subscribeGlobalLiveEvents` left untouched.** That's the existing `*`-channel API for `publishGlobalLiveEvent` (events not tied to any single company). Behaviour is purely additive.
+
+**Notes for next task (A-07):** Credit ledger. Per ARCHITECTURE.md `credit_ledger` is owned by plugin-payments, not plugin-company. The orchestrator's queue lists A-07 as next; will scaffold under `packages/plugin-payments/` (new package, mirroring plugin-company's layout) since plugin-payments doesn't exist yet. PLAN.md A-07 reads "credit ledger" with no existing scaffold notes, so this becomes the package's bootstrap commit too. Side surface: a thin read API for plugin-company's dashboard widget if needed.
+
+---
+
 ## A-06.5 · 2026-04-17 14:01 · agent-A
 **Commit:** on `feat/backend-wiring` (about to push)
 **Files:** packages/plugin-company/src/server/{router,schemas,check-in-wiring,index}.ts (new), packages/plugin-company/src/server/{router.test,check-in-wiring.test}.ts (new), packages/plugin-company/src/index.ts (modified — re-export not added; server surface intentionally lives behind `/server/index.js` to keep the main entry free of express/zod), packages/plugin-company/package.json (modified — version 0.4.0 → 0.5.0, deps add: express, zod, supertest, @types/express, @types/supertest), packages/plugin-company/vitest.config.ts (modified — testTimeout 5s → 20s for embedded-postgres setup cost), server/package.json (modified — added @paperclipai/plugin-company workspace dep), server/src/routes/plugin-company.ts (new — thin re-export through authz), server/src/app.ts (modified — one-line route mount + boot-time check-in poster install per company), pnpm-lock.yaml, .agents/company-dev/checks/gate-A-06.5.sh (new).
