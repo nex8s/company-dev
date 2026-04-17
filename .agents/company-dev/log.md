@@ -4,8 +4,43 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-10 · 2026-04-17 23:30 · agent-A
+**Commit:** ce4d5967 on `feat/backend-wiring` (pushed via force-with-lease after rebase onto ca243748 — the orchestrator's B-03+B-07 merge + migration-renumber pass).
+**Files:** packages/db/src/migrations/0068_store_templates.sql (new), packages/db/src/rollbacks/0068_store_templates.down.sql (new), packages/db/src/migrations/meta/_journal.json (modified — added idx 68), packages/plugin-company/src/store-publishing/{publisher,publisher.test}.ts (new), packages/plugin-company/src/server/store-publish-route.test.ts (new), packages/plugin-company/src/server/{router,schemas}.ts (modified — added 3 routes + zod schemas + mapPublishError helper), packages/plugin-company/src/index.ts (modified — re-export publisher), packages/plugin-company/package.json (added @paperclipai/plugin-store workspace dep), .agents/company-dev/checks/gate-A-10.sh (new).
+
+**Tests:** 22 total, all green:
+- publisher.test.ts (14): publish single agent as employee template (gate round-trip), department inference (enum match → engineering, regex match → marketing/sales/support, unknown → operations fallback), explicit department override, cross-company agent → throws, adapterConfig.model read, duplicate slug → throws (unique index), publish entire company → multi-employee template, CompanyProfile title/description preferred over companies row, per-agent overrides (role/responsibilities on one, defaults for others), empty company → throws, unknown companyId → throws, list newest-first with kind filter, getBySlug, jsonb payload shape in store_templates row.
+- store-publish-route.test.ts (8): POST publish-agent + GET list round-trip + kind filter (gate round-trip), POST publish-company multi-agent (gate round-trip), cross-company agent → 404, duplicate slug → 409, empty company → 409, malformed slug → 400, unknown body field → 400 (strict zod), unknown kind filter → 400.
+
+**Gate output (tail):**
+```
+ ✓ src/server/store-publish-route.test.ts (8 tests) 70336ms
+ ✓ src/store-publishing/publisher.test.ts (14 tests) 95665ms
+ Test Files  2 passed (2)   Tests  22 passed (22)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-10: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: server + plugin-company both `Done`.
+- `pnpm test:run`: not re-run for A-10 per the established "gate + typecheck sufficient" cadence. Orchestrator verifies on a clean checkout.
+
+**Design decisions:**
+1. **A-10 owns the full write path; B-06 layers filters on top.** PLAN.md has A-10 depending on B-06 and B-06 depending on receiving A-10's payload — circular. Resolution: A-10 ships the migration + both publish operations + a minimal `listPublishedTemplates` + GET /store/templates so the gate round-trips without waiting for B-06. B-06 can come back and add pagination / category facets / download-count bumps on the same `store_templates` table with zero contract change.
+2. **Migration lives in packages/db, not plugin-store.** drizzle-kit only scans packages/db/dist; plugin-store's local `storeTemplates` pgTable has been a dangling declaration since scaffold. The 0068 migration finally creates the real table; plugin-store's schema symbol continues to work unchanged.
+3. **`employees` jsonb shape mirrors `SeedTemplate.employees` from plugin-store.** An `employee`-kind template has `employees.length === 1`; a `business`-kind has N. Matches the shape B-05's install flow already consumes, so publish-then-install round-trips without a shape translation layer.
+4. **Department inference is layered, deterministic, explicit-override-wins.** (a) explicit `department` param (b) role string matches HireableDepartment directly (c) regex against common role names (engineer/developer → engineering, market/content/growth → marketing, sales/account/bd → sales, support/success/cx → support) (d) `operations` fallback. Covered by three focused unit tests.
+5. **Duplicate-slug → 409, not 500.** `mapPublishError` catches Postgres 23505 / `/duplicate key|unique/` and translates to HttpError(409, "store template slug already exists"). Also handles "agent not found in company" → 404 and "has no agents to publish" → 409.
+6. **Strict zod body schemas.** Unknown body fields → 400. Slug must match `/^[a-z0-9][a-z0-9-]*[a-z0-9]$/` (3–80 chars). Category/creator capped at 60/120. Skills array capped at 20, responsibilities at 40. agentOverrides record keyed by agentId uuid with strict optional subset.
+7. **CompanyProfile title/description preferred for company-template defaults.** If a `companyProfiles` row exists, its `name` beats `companies.name` for the published title, and its `description` becomes the default summary. Falls through to the Paperclip company row + a generated summary if no profile is present.
+8. **Per-agent overrides only merge the fields passed.** Tests assert that unoverridden agents still get default schedule/responsibilities while overridden agents get their specified values.
+
+**Notes:** A-series is complete (A-01..A-10 + A-06.5 side + A-06.6 gap-fix). All writes to the Company.dev-specific domain tables are wired. Remaining A-agent work is purely responsive (rebases, env-flake triage, questions).
+
+---
+
 ## A-09 · 2026-04-17 20:09 · agent-A
-**Commit:** 7ede3cc2 on `feat/backend-wiring` (pushed).
+**Commit:** 7ede3cc2 on `feat/backend-wiring` (rebased to f1ce221e post-A-10; pushed).
 **Files:** packages/plugin-company/src/server-panel/{resolver,resolver.test}.ts (new), packages/plugin-company/src/server/server-panel-route.test.ts (new), packages/plugin-company/src/server/router.ts (modified — new GET /server-panel route + optional serverPanelConfig/serverPanelDeps for test injection), packages/plugin-company/src/index.ts (modified — re-exports resolver; version 0.5.0 → 0.6.0), packages/plugin-company/package.json (version bump), .agents/company-dev/checks/gate-A-09.sh (new).
 
 **Tests:** 15 total, all green:
