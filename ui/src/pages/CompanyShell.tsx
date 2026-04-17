@@ -28,6 +28,7 @@ import { CompanyStrategy } from "./company-tabs/Strategy";
 import { CompanyPayments } from "./company-tabs/Payments";
 import { CompanySettingsTab } from "./company-tabs/Settings";
 import { CompanyTasks } from "./company-tabs/Tasks";
+import { EmployeeDetail } from "./employee/EmployeeDetail";
 import {
   Popover,
   PopoverContent,
@@ -131,6 +132,7 @@ export function CompanyShell() {
           <Route path="payments" element={<CompanyPayments />} />
           <Route path="settings/*" element={<CompanySettingsTab />} />
           <Route path="tasks" element={<CompanyTasks />} />
+          <Route path="team/:agentId/*" element={<EmployeeDetail />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
@@ -196,7 +198,7 @@ function Sidebar({ data, companyId }: { data: CompanyShellData; companyId: strin
       >
         <SidebarPrimaryNav companyId={companyId} />
         <AppsSection apps={data.apps} />
-        <TeamSection ceo={data.ceo} departments={data.departments} />
+        <TeamSection ceo={data.ceo} departments={data.departments} companyId={companyId} />
         <GettingStartedPanel checklist={data.gettingStarted} />
       </nav>
 
@@ -500,19 +502,24 @@ function AppsSection({ apps }: { apps: CompanyShellData["apps"] }) {
 function TeamSection({
   ceo,
   departments,
+  companyId,
 }: {
   ceo: CompanyShellData["ceo"];
   departments: CompanyShellDeptGroup[];
+  companyId: string;
 }) {
+  const navigate = useNavigate();
   return (
     <div className="mt-6">
       <div className="px-2 text-[10px] font-semibold text-mist uppercase tracking-wider mb-2">
         {copy.sections.team}
       </div>
 
-      <a
-        href="#"
-        className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5"
+      <button
+        type="button"
+        data-agent-id={ceo.id}
+        onClick={() => navigate(`/c/${companyId}/team/${ceo.id}`)}
+        className="w-full text-left flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5"
       >
         <span className="flex items-center gap-2">
           <Building2 className="size-3.5 text-ink" strokeWidth={1.5} />
@@ -521,16 +528,23 @@ function TeamSection({
           </span>
         </span>
         <span className="text-[10px] text-mist">{ceo.updatedAgo}</span>
-      </a>
+      </button>
 
       {departments.map((dept) => (
-        <DeptGroup key={dept.department} dept={dept} />
+        <DeptGroup key={dept.department} dept={dept} companyId={companyId} />
       ))}
     </div>
   );
 }
 
-function DeptGroup({ dept }: { dept: CompanyShellDeptGroup }) {
+function DeptGroup({
+  dept,
+  companyId,
+}: {
+  dept: CompanyShellDeptGroup;
+  companyId: string;
+}) {
+  const navigate = useNavigate();
   const title = copy.departmentTitles[dept.department];
   return (
     <Collapsible data-testid={`dept-${dept.department}`}>
@@ -558,16 +572,18 @@ function DeptGroup({ dept }: { dept: CompanyShellDeptGroup }) {
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col pl-6 pr-2 py-1 space-y-1">
         {dept.agents.map((agent) => (
-          <a
+          <button
             key={agent.id}
-            href="#"
-            className="flex flex-col py-1 text-xs text-ink hover:bg-black/5 rounded-md px-2"
+            type="button"
+            data-agent-id={agent.id}
+            onClick={() => navigate(`/c/${companyId}/team/${agent.id}`)}
+            className="text-left flex flex-col py-1 text-xs text-ink hover:bg-black/5 rounded-md px-2"
           >
             <span className="truncate">{agent.displayName}</span>
             <span className="text-[10px] text-mist truncate">
               {agent.statusLabel}
             </span>
-          </a>
+          </button>
         ))}
       </CollapsibleContent>
     </Collapsible>
@@ -771,7 +787,11 @@ function UserMenuItem({
 function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
   const location = useLocation();
   const path = location.pathname;
-  const isSiblingView = path === `/c/${companyId}/tasks`;
+  // Sibling views render their own header chrome — the company-sub-tab
+  // breadcrumb doesn't apply. Tasks (C-06) and Employee Detail (C-09).
+  const isSiblingView =
+    path === `/c/${companyId}/tasks` ||
+    path.startsWith(`/c/${companyId}/team/`);
   if (isSiblingView) return null;
   return <CompanyBreadcrumb companyId={companyId} />;
 }
