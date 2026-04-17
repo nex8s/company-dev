@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import { Route, Routes, useLocation, useNavigate, useParams } from "@/lib/router";
 import { CompanyChat } from "./CompanyChat";
+import { CompanyOverview } from "./company-tabs/Overview";
+import { CompanyStrategy } from "./company-tabs/Strategy";
+import { CompanyPayments } from "./company-tabs/Payments";
+import { CompanySettingsTab } from "./company-tabs/Settings";
 import {
   Popover,
   PopoverContent,
@@ -112,9 +116,14 @@ export function CompanyShell() {
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         <CompanyBreadcrumb companyId={companyId} />
         <Routes>
-          {/* C-04 Chat is the default view. Other tabs get a placeholder
-              until C-05 through C-10 ship their content. */}
+          {/* C-04 Chat is the default view. C-05 filled in Overview /
+              Strategy / Payments / Settings. Remaining tabs (Tasks, Drive,
+              Store, Team, Apps) keep the placeholder until C-06 — C-10. */}
           <Route index element={<CompanyChat />} />
+          <Route path="overview" element={<CompanyOverview />} />
+          <Route path="strategy" element={<CompanyStrategy />} />
+          <Route path="payments" element={<CompanyPayments />} />
+          <Route path="settings/*" element={<CompanySettingsTab />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>

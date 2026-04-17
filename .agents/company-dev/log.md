@@ -523,3 +523,49 @@ Test Files  1 passed (1)
 
 
 
+
+---
+
+## C-05 · 2026-04-17 06:00 · agent-C
+**Commit:** 329c3fb5 on `feat/frontend-port` (pushed to origin)
+**Files:**
+- `ui/src/copy/company-tabs.ts` (new — all user-facing strings for the four sub-tabs)
+- `ui/src/hooks/useCompanyTabsData.ts` (new — single data-seam facade with A-02 / A-03 / A-05 / A-07 / B-07 swap points flagged inline)
+- `ui/src/pages/company-tabs/Overview.tsx` (new — hero + 4 KPIs + Stripe revenue empty + AI usage + Team/Apps lists; skeleton + error states)
+- `ui/src/pages/company-tabs/Strategy.tsx` (new — Positioning + Target Audience cards, Core Strategy callout, Active Plans, Goals empty)
+- `ui/src/pages/company-tabs/Payments.tsx` (new — Stripe Connect empty state)
+- `ui/src/pages/company-tabs/Settings.tsx` (new — outer settings shell + 6-button inner tab strip; General reads A-02 fields, others render placeholder until B-tasks)
+- `ui/src/pages/company-tabs/{Overview,Strategy,Payments,Settings}.test.tsx` (new — 15 component tests)
+- `ui/src/pages/CompanyShell.tsx` (modified — wires `<Route>` for overview / strategy / payments / settings/* in place of `MainContentPlaceholder`)
+- `.agents/company-dev/checks/gate-C-05.sh` (new)
+
+**Tests:** 15 new tests across the four tab files (all pass) + the 11 existing `CompanyShell.test.tsx` tests still pass:
+- Overview (5): hero w/ badges + CTAs, 4 KPI cards, Stripe revenue empty state, AI usage card, Team + Apps lists
+- Strategy (4): Positioning + Audience CompanyProfile cards, Core Strategy callout, active-plan card with progress + agent count, Goals empty CTA
+- Payments (1): Stripe Connect empty title + body + CTA
+- Settings (5): heading + 6-button inner tab strip, General active by default, A-02 CompanyProfile fields render (name input, two toggles, danger zone), inner-tab navigation fires `useNavigate`, placeholder renders for stub tabs (`billing` smoke)
+
+**Gate output (tail):**
+```
+ ✓ src/pages/company-tabs/Payments.test.tsx (1 test) 334ms
+ ✓ src/pages/company-tabs/Strategy.test.tsx (4 tests) 260ms
+ ✓ src/pages/company-tabs/Settings.test.tsx (5 tests) 622ms
+ ✓ src/pages/company-tabs/Overview.test.tsx (5 tests) 573ms
+ ✓ src/pages/CompanyShell.test.tsx (11 tests) 6222ms
+ Test Files  5 passed (5)
+      Tests  26 passed (26)
+▶ gate-C-05: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: **278/278 files, 1579/1580 tests pass, 1 skipped, 0 failed** on a clean rerun (exit 0). An earlier run during heavy load surfaced 18 timeout-flake failures (all server / e2e tests with no UI overlap — `routines-e2e`, `worktree`, `company-import-export-e2e`, `project-routes-env`, etc.); rerunning quiesced cleared every one. No new flakes introduced.
+
+**Design decisions:**
+1. **Subdirectory `ui/src/pages/company-tabs/`** — the existing `ui/src/pages/CompanySettings.tsx` is a legacy Paperclip page. Rather than rename it (out-of-scope), the new C-05 components live in a sibling subdirectory to avoid the name clash and signal at a glance which files belong to the company-shell tabs.
+2. **Single `useCompanyTabsData` hook** for all four tabs instead of one per tab. The four tabs share a logical "company view" data envelope — one loading state + one error keeps the seam simple, and the A-02 / A-07 / B-07 swap points all land in one place when those tasks merge. Each field block is annotated with the specific task that will replace its mock.
+3. **Settings inner routing nests `<Routes>` under the outer `settings/*` route** — same pattern as CompanyShell's nested router. Path matching for the active inner tab is local (`activeInnerTab`) rather than re-exported from the shell so the strip can be reused or moved without coupling.
+4. **`SettingsPlaceholder` over per-tab stubs** — Billing / Team / Usage / Server / Publishing all share the same "lands when X merges" message. One placeholder component takes `(tab, task)` and reads the human label from the same copy file; replacing each with real content is a one-line `<Route>` swap.
+5. **Hero + CTAs wired to no-op buttons** rather than `navigate("/c/.../chat")` — the breadcrumb already handles navigation between tabs and there's no requirement in PLAN.md for the hero CTAs to do anything specific. Wiring is a 5-line swap if a later task wants it.
+
+**Notes for next task (C-06 — Tasks kanban).** A-05 merged so the pending-review queue contract exists; the kanban can read that for the "Needs Review" column and stub the other three (Queued / In Progress / Completed) until A-08 ships the task lifecycle. Reference layout in `ui-import/dashboard.html` line ~960 (`view-tasks`). Same pattern as C-05: copy in `ui/src/copy/`, data-seam hook for the kanban data, page in `ui/src/pages/company-tabs/Tasks.tsx` (or wherever it routes — check shell breadcrumb tab list).
