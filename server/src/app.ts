@@ -32,6 +32,7 @@ import { assetRoutes } from "./routes/assets.js";
 import { accessRoutes } from "./routes/access.js";
 import { pluginRoutes } from "./routes/plugins.js";
 import { adapterRoutes } from "./routes/adapters.js";
+import { pluginAppsBuilderRoutes } from "./routes/plugin-apps-builder.js";
 import { pluginCompanyRoutes } from "./routes/plugin-company.js";
 import { pluginConnectToolsRoutes } from "./routes/plugin-connect-tools.js";
 import { pluginDashboardsRoutes } from "./routes/plugin-dashboards.js";
@@ -284,6 +285,7 @@ export async function createApp(
     ),
   );
   api.use(adapterRoutes());
+  api.use(pluginAppsBuilderRoutes(db));
   api.use(pluginCompanyRoutes(db));
   api.use(pluginConnectToolsRoutes(db));
   api.use(pluginDashboardsRoutes(db));

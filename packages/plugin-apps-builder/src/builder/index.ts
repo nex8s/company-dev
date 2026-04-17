@@ -13,3 +13,9 @@ export {
   type ScaffoldInput,
   type ScaffoldedFile,
 } from "./scaffold.js";
+export {
+  buildFileTree,
+  type FileTreeEntryInput,
+  type FileTreeLeaf,
+  type FileTreeNode,
+} from "./file-tree.js";

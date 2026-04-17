@@ -53,6 +53,7 @@
     "@paperclipai/adapter-pi-local": "workspace:*",
     "@paperclipai/adapter-utils": "workspace:*",
     "@paperclipai/db": "workspace:*",
+    "@paperclipai/plugin-apps-builder": "workspace:*",
     "@paperclipai/plugin-company": "workspace:*",
     "@paperclipai/plugin-connect-tools": "workspace:*",
     "@paperclipai/plugin-dashboards": "workspace:*",

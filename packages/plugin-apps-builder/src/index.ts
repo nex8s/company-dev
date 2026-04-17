@@ -1,5 +1,12 @@
-export { apps, appFiles } from "./schema.js";
-export type { AppRow, NewAppRow, AppFileRow, NewAppFileRow } from "./schema.js";
+export { apps, appFiles, appDeployments } from "./schema.js";
+export type {
+  AppRow,
+  NewAppRow,
+  AppFileRow,
+  NewAppFileRow,
+  AppDeploymentRow,
+  NewAppDeploymentRow,
+} from "./schema.js";
 export {
   InMemoryAppsRepository,
 } from "./apps.js";
@@ -10,14 +17,18 @@ export type {
 } from "./apps.js";
 export * from "./builder/index.js";
 
-import { apps, appFiles } from "./schema.js";
+import { apps, appFiles, appDeployments } from "./schema.js";
 
 export function registerPlugin(): {
   name: string;
-  tables: { apps: typeof apps; appFiles: typeof appFiles };
+  tables: {
+    apps: typeof apps;
+    appFiles: typeof appFiles;
+    appDeployments: typeof appDeployments;
+  };
 } {
   return {
     name: "@paperclipai/plugin-apps-builder",
-    tables: { apps, appFiles },
+    tables: { apps, appFiles, appDeployments },
   };
 }

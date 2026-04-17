@@ -1,5 +1,13 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { agents, appFiles, apps, issueComments, issues, type Db } from "@paperclipai/db";
+import {
+  agents,
+  appDeployments,
+  appFiles,
+  apps,
+  issueComments,
+  issues,
+  type Db,
+} from "@paperclipai/db";
 import {
   CEO_DEFAULT_NAME,
   hireAgent,
@@ -23,6 +31,7 @@ export interface BuildAppResult {
   readonly engineerAgentId: string;
   readonly issueId: string;
   readonly checkInCommentId: string;
+  readonly deploymentId: string;
   readonly files: readonly { path: string; sizeBytes: number }[];
   readonly productionDomain: string;
 }
@@ -88,6 +97,13 @@ export async function buildApp(db: Db, input: BuildAppInput): Promise<BuildAppRe
     engineerAgentId: engineer.id,
   });
 
+  const deploymentId = await recordDeployment(db, {
+    appId: app.id,
+    companyId: app.companyId,
+    url: productionDomain,
+    triggeredByAgentId: engineer.id,
+  });
+
   const persisted = await db
     .select({ path: appFiles.path, sizeBytes: appFiles.sizeBytes })
     .from(appFiles)
@@ -99,9 +115,41 @@ export async function buildApp(db: Db, input: BuildAppInput): Promise<BuildAppRe
     engineerAgentId: engineer.id,
     issueId,
     checkInCommentId,
+    deploymentId,
     files: persisted,
     productionDomain,
   };
+}
+
+interface RecordDeploymentInput {
+  appId: string;
+  companyId: string;
+  url: string;
+  triggeredByAgentId: string;
+}
+
+/**
+ * Write a deployment-history row for the Deployments tab (B-03). Always
+ * inserts a new row — the tab is chronological, so repeat builds produce
+ * repeat rows. `status` is `succeeded` because the scaffold step is
+ * synchronous; Phase-2 real deployments will transition through
+ * `pending` → `succeeded`/`failed`.
+ */
+async function recordDeployment(db: Db, input: RecordDeploymentInput): Promise<string> {
+  const now = new Date();
+  const [row] = await db
+    .insert(appDeployments)
+    .values({
+      appId: input.appId,
+      companyId: input.companyId,
+      url: input.url,
+      status: "succeeded",
+      triggeredByAgentId: input.triggeredByAgentId,
+      triggeredAt: now,
+      completedAt: now,
+    })
+    .returning({ id: appDeployments.id });
+  return row!.id;
 }
 
 type Agent = typeof agents.$inferSelect;
