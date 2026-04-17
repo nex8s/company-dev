@@ -35,7 +35,17 @@ vi.mock("@/lib/router", async () => {
     ),
     useLocation: () => mockLocation,
     useNavigate: () => mockNavigate,
-    useParams: () => ({ companyId: "company-x" }),
+    // Resolve params from the current mocked path so nested routes (e.g.
+    // `/c/:companyId/team/:agentId`) receive the agent id in addition to
+    // the company id. Shell-only routes still see just `{ companyId }`.
+    useParams: () => {
+      const m = mockLocation.pathname.match(
+        /^\/c\/([^/]+)(?:\/team\/([^/]+))?/,
+      );
+      return m
+        ? { companyId: m[1], ...(m[2] ? { agentId: m[2] } : {}) }
+        : { companyId: "company-x" };
+    },
   };
 });
 
@@ -280,5 +290,33 @@ describe("CompanyShell (C-03)", () => {
     );
     expect(tasksBtn?.getAttribute("aria-current")).toBe("page");
     expect(companyBtn?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("navigates to /team/:agentId when the CEO sidebar row is clicked (C-09)", () => {
+    root = renderShell(container);
+    const ceoRow = container.querySelector(
+      '[data-testid="company-sidebar"] [data-agent-id="agent-ceo"]',
+    );
+    expect(ceoRow).toBeTruthy();
+    clickElement(ceoRow!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/team/agent-ceo");
+  });
+
+  it("expands a dept group and navigates to /team/:agentId when a dept agent row is clicked (C-09)", () => {
+    root = renderShell(container);
+    const marketing = container.querySelector('[data-testid="dept-marketing"]');
+    const trigger = marketing?.querySelector("button");
+    clickElement(trigger!);
+    const agentRow = marketing?.querySelector('[data-agent-id="agent-gm"]');
+    expect(agentRow).toBeTruthy();
+    clickElement(agentRow!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/team/agent-gm");
+  });
+
+  it("hides the breadcrumb when on /c/:companyId/team/:agentId (C-09)", () => {
+    mockLocation.pathname = "/c/company-x/team/agent-lpe";
+    root = renderShell(container, "/c/company-x/team/agent-lpe");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="employee-detail"]')).toBeTruthy();
   });
 });

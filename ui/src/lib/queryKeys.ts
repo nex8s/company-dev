@@ -161,4 +161,8 @@ export const queryKeys = {
     pendingReviews: (companyId: string) =>
       ["plugin-company", companyId, "reviews", "pending"] as const,
   },
+  pluginIdentity: {
+    agentCards: (companyId: string, agentId: string) =>
+      ["plugin-identity", companyId, "agents", agentId, "cards"] as const,
+  },
 };
