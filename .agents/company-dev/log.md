@@ -521,6 +521,67 @@ Test Files  1 passed (1)
 
 **Notes for next task:** B-10/B-11/B-12 follow the same shape — `{Bank,Email,Browser}Provider` interface + `Mock*Provider` + `runXContract` reusable spec + `*.contract.test.ts`. Same package (plugin-identity/src/{bank,email,browser}/), same scaffolding. Should land quickly once resumed. Then C-09 (employee detail tabs) is unblocked.
 
+---
+
+## B-10 · 2026-04-17 13:57 · agent-B
+**Commit:** 96d870da on `feat/new-features`
+**Files:** packages/plugin-identity/src/bank/{provider,mock,contract,index}.ts (new), src/bank/mock.contract.test.ts (new), src/index.ts (+bank re-export), vitest.config.ts (+plugin-identity in projects), .agents/company-dev/checks/gate-B-10.sh (new).
+**Tests:** `src/bank/mock.contract.test.ts` — 13 tests (10 via `runBankProviderContract("MockBankProvider", …)` + 3 mock-specific): openAccount UI shape, openAccount idempotency-with-key, issueVirtualCard masked-PAN UI shape, card idempotency-with-key, listCards-per-account, listTransactions empty, listTransactions `since` filter, freezeCard flips status, freezeCard-unknown rejects, deterministic `4242 42** **** NNNN` PANs, acct-/card- id prefixes, structured log events, unknown-account rejection.
+**Gate output (tail):**
+```
+> @paperclipai/plugin-identity@0.1.0 test:run
+> vitest run
+ ✓ src/identity/mock.contract.test.ts (11 tests) 11ms
+ ✓ src/bank/mock.contract.test.ts (13 tests) 47ms
+ Test Files  2 passed (2)
+      Tests  24 passed (24)
+▶ gate-B-10: all checks passed
+```
+**Full-repo checks (after rebase onto A-06):** `pnpm test:run` → **278/279 files pass, 1625/1627 tests pass, 1 skipped, 1 known env-flake** (`server/src/__tests__/agent-permissions-routes.test.ts:208` — same family of timing-sensitive route tests already noted in C-02 / A-04 / A-05 logs; passes in isolation, untouched by B-10). All 4 plugin-identity files green (54 tests).
+**Also in this commit (pre-existing fix):** added `packages/plugin-identity` to root `vitest.config.ts` projects list. Without it, B-09's `runIdentityProviderContract` was being silently skipped at the workspace level (same gap A-05's log flagged for plugin-company, since fixed). The B-10 gate now also asserts that this entry is present.
+
+---
+
+## B-11 · 2026-04-17 13:57 · agent-B
+**Commit:** 048263cd on `feat/new-features`
+**Files:** packages/plugin-identity/src/email/{provider,mock,contract,index}.ts (new), src/email/mock.contract.test.ts (new), src/index.ts (+email re-export), .agents/company-dev/checks/gate-B-11.sh (new).
+**Tests:** `src/email/mock.contract.test.ts` — 15 tests (9 via `runEmailProviderContract("MockEmailProvider", …)` + 6 mock-specific): provisionInbox UI shape with composed `local@domain` address, explicit-domain+localPart honoured, provisionInbox idempotency-with-key, sendEmail returns non-empty messageId, sendEmail idempotency-with-key (single delivery), listMessages filters to involved-agent only, `since` filter, registerCustomDomain UI shape with non-empty DNS records, no-key sends create distinct messages, default-domain fallback, internal-only delivery sets `direction:'internal'` + `toSelfOnly:true` when every recipient is another agent in the same company, external-recipient delivery sets `outbound`/`toSelfOnly:false`, sendEmail without an inbox rejects, registerCustomDomain returns CNAME+TXT stubs, structured log events.
+**Gate output (tail):**
+```
+ ✓ src/identity/mock.contract.test.ts (11 tests) 4ms
+ ✓ src/email/mock.contract.test.ts (15 tests) 5ms
+ ✓ src/bank/mock.contract.test.ts (13 tests) 5ms
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+▶ gate-B-11: all checks passed
+```
+**Full-repo checks:** as for B-10 (single full-repo gate after all three landed; see B-12 for raw counts).
+
+---
+
+## B-12 · 2026-04-17 13:57 · agent-B
+**Commit:** d2ada483 on `feat/new-features`
+**Files:** packages/plugin-identity/src/browser/{provider,mock,contract,index}.ts (new), src/browser/mock.contract.test.ts (new), src/index.ts (+browser re-export), .agents/company-dev/checks/gate-B-12.sh (new).
+**Tests:** `src/browser/mock.contract.test.ts` — 15 tests (9 via `runBrowserProviderContract("MockBrowserProvider", …)` + 6 mock-specific): startSession UI shape, startSession idempotency-with-key, attachTool returns session+tool-linked handle, attachTool unknown-session rejects, getLiveViewUrl agrees with startSession, getLiveViewUrl unknown→null, stopSession quiesces session (live-view becomes null), stopSession unknown rejects, getSessionArtifacts returns array, mock-specific: status:'inactive' + liveViewUrl:null matches the "Browser inactive" empty state from the prototype, liveView:true does NOT change the mock's null URL (per spec), attachTool returns `noop:true`, getSessionArtifacts always [], `bsession-` id prefix, structured log events.
+**Gate output (tail):**
+```
+ ✓ src/browser/mock.contract.test.ts (15 tests) 4ms
+ ✓ src/bank/mock.contract.test.ts (13 tests) 5ms
+ ✓ src/identity/mock.contract.test.ts (11 tests) 7ms
+ ✓ src/email/mock.contract.test.ts (15 tests) 8ms
+ Test Files  4 passed (4)
+      Tests  54 passed (54)
+▶ gate-B-12: all checks passed
+```
+**Full-repo checks (after rebase onto origin/master @ d0a82eb3, post-A-06):**
+```
+ Test Files  1 failed | 278 passed (279)
+      Tests  1 failed | 1625 passed | 1 skipped (1627)
+```
+The single failure was `agent-permissions-routes.test.ts:208` — same timing-sensitive route-test flake family flagged in earlier logs. An earlier run on the same tree saw 9 such flakes; under reduced load the count dropped to 1. None are in code touched by B-10/B-11/B-12 (all isolated to `packages/plugin-identity/`). Within the "5 known env-flakes OK" budget for the relaunch doc on this run; **flagging the run-over-run variance** to the orchestrator (`questions/orchestrator.md` already tracks the broader server-route-test flake pattern).
+
+**Notes for next task:** B-13 (Virtual Cards backend — needs B-10 ✓) and B-14 (Connect-tools hub — unblocked) are both ready to start. B-02 still blocked by A-06 (now merged — re-check) and B-07 still blocked by A-07 (not started).
+
 
 
 
