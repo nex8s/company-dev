@@ -19,6 +19,7 @@ export * from "./agents/prompts.js";
 export * from "./getting-started/checklist.js";
 export * from "./getting-started/steps.js";
 export * from "./reviews/queue.js";
+export * from "./heartbeat/check-in-poster.js";
 
 export interface CompanyPluginRegistration {
   readonly name: "plugin-company";
@@ -34,6 +35,6 @@ export interface CompanyPluginRegistration {
 export function registerPlugin(): CompanyPluginRegistration {
   return {
     name: "plugin-company",
-    version: "0.3.1",
+    version: "0.4.0",
   };
 }
