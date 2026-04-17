@@ -157,4 +157,8 @@ export const queryKeys = {
   adapters: {
     all: ["adapters"] as const,
   },
+  pluginCompany: {
+    pendingReviews: (companyId: string) =>
+      ["plugin-company", companyId, "reviews", "pending"] as const,
+  },
 };
