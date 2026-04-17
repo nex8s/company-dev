@@ -16,7 +16,9 @@ export {
   createSubscriptionCheckoutBodySchema,
   createTopUpCheckoutBodySchema,
   createPortalBodySchema,
+  transactionHistoryQuerySchema,
   type CreateSubscriptionCheckoutBody,
   type CreateTopUpCheckoutBody,
   type CreatePortalBody,
+  type TransactionHistoryQuery,
 } from "./schemas.js";

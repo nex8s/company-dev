@@ -25,3 +25,10 @@ export {
   applyWebhookEvent,
   type WebhookOutcome,
 } from "./webhook-handler.js";
+export {
+  listUsageBreakdownByAgent,
+  listTransactionHistory,
+  currentMonthWindow,
+  type AgentUsageRow,
+  type ListTransactionHistoryInput,
+} from "./usage.js";
