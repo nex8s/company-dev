@@ -47,3 +47,13 @@ export const createPortalBodySchema = z
   .strict();
 
 export type CreatePortalBody = z.infer<typeof createPortalBodySchema>;
+
+export const transactionHistoryQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+    /** ISO-8601 timestamp; rows with `created_at < before` are returned. */
+    before: z.string().datetime().optional(),
+  })
+  .strict();
+
+export type TransactionHistoryQuery = z.infer<typeof transactionHistoryQuerySchema>;
