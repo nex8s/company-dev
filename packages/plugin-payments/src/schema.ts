@@ -1,10 +1,14 @@
-import { creditLedger } from "@paperclipai/db";
+import { billingCustomers, billingSubscriptions, creditLedger } from "@paperclipai/db";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-export { creditLedger };
+export { creditLedger, billingCustomers, billingSubscriptions };
 
 export type CreditLedgerEntry = InferSelectModel<typeof creditLedger>;
 export type NewCreditLedgerEntry = InferInsertModel<typeof creditLedger>;
+export type BillingCustomer = InferSelectModel<typeof billingCustomers>;
+export type NewBillingCustomer = InferInsertModel<typeof billingCustomers>;
+export type BillingSubscription = InferSelectModel<typeof billingSubscriptions>;
+export type NewBillingSubscription = InferInsertModel<typeof billingSubscriptions>;
 
 /**
  * Discriminator for `credit_ledger.entry_type`. Balance computation:

@@ -58,6 +58,7 @@
     "@paperclipai/plugin-connect-tools": "workspace:*",
     "@paperclipai/plugin-dashboards": "workspace:*",
     "@paperclipai/plugin-identity": "workspace:*",
+    "@paperclipai/plugin-payments": "workspace:*",
     "@paperclipai/plugin-sdk": "workspace:*",
     "@paperclipai/shared": "workspace:*",
     "ajv": "^8.18.0",

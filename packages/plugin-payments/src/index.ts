@@ -13,6 +13,8 @@
 export * from "./schema.js";
 export * from "./ledger/operations.js";
 export * from "./budgets/cap-enforcement.js";
+export * from "./billing/index.js";
+export * from "./stripe/index.js";
 
 export interface PaymentsPluginRegistration {
   readonly name: "plugin-payments";

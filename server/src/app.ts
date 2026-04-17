@@ -37,6 +37,7 @@ import { pluginCompanyRoutes } from "./routes/plugin-company.js";
 import { pluginConnectToolsRoutes } from "./routes/plugin-connect-tools.js";
 import { pluginDashboardsRoutes } from "./routes/plugin-dashboards.js";
 import { pluginIdentityRoutes } from "./routes/plugin-identity.js";
+import { pluginPaymentsRoutes } from "./routes/plugin-payments.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
 import {
   createCheckInPoster,
@@ -290,6 +291,7 @@ export async function createApp(
   api.use(pluginConnectToolsRoutes(db));
   api.use(pluginDashboardsRoutes(db));
   api.use(pluginIdentityRoutes(db));
+  api.use(pluginPaymentsRoutes(db));
   api.use(
     accessRoutes(db, {
       deploymentMode: opts.deploymentMode,
