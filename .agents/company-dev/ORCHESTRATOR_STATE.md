@@ -1,9 +1,9 @@
-# Orchestrator State — 2026-04-17 05:55
+# Orchestrator State — 2026-04-17 14:15
 
 ## Master tip
-`81298947` on `origin/master`
+`584e0359` on `origin/master`
 
-## Merged tasks (14/39 = 36%)
+## Merged tasks (15/39 = 38%)
 
 | ID | Task | Merge commit |
 |---|---|---|
@@ -21,13 +21,14 @@
 | C-03 | Company shell (sidebar, popovers, Getting Started) | 8f4537a9 |
 | C-04 | Company Chat view + C-03 stub-match patch | cb5a634f |
 | A-06 | heartbeat check-in poster (plugin-company) | 81298947 |
+| A-06.5 | plugin-company HTTP routes + check-in wiring | 584e0359 |
 
 ## Next tasks per agent
 
-### Agent A — next: A-06.5 (HTTP routes + run-stream wiring) — AUTHORIZED 2026-04-17 05:55
-- Branch: `feat/backend-wiring` at 40ff1adb (merged to master via 81298947)
-- Scope: zod-validated HTTP routes for plugin-company (getChecklist, completeStep, listPendingReviews, approveReview, rejectReview, CompanyProfile CRUD) + subscribe A-06 check-in-poster to Paperclip's run-status stream in the same plugin-bootstrap module
-- Unblocks: Agent C's C-05 (swap stubs for live queries)
+### Agent A — next: A-06.6 (runtime-new-company auto-wire) then A-07 — AUTHORIZED 2026-04-17 14:15
+- Branch: `feat/backend-wiring` at a1cfb7cc (merged via 584e0359)
+- A-06.6 scope: add `subscribeAllCompaniesLiveEvents` to `server/src/services/live-events.ts` and swap the boot-time per-company loop in `app.ts` for a single global subscription. Option (1) from the agent-A question. Keeps us off the plugin-event-bus path for now and works for any company lifecycle.
+- Unblocks (still): Agent C's C-05 already unblocked by A-06.5 — HTTP routes live and mounted at `/api/companies/:companyId/plugin-company/*`.
 - Handoff file: `.agents/company-dev/questions/agent-a.md`
 
 ### Agent B — next: B-10 (BankProvider + Mock)
