@@ -60,6 +60,7 @@
     "@paperclipai/plugin-identity": "workspace:*",
     "@paperclipai/plugin-payments": "workspace:*",
     "@paperclipai/plugin-sdk": "workspace:*",
+    "@paperclipai/plugin-store": "workspace:*",
     "@paperclipai/shared": "workspace:*",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
