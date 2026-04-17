@@ -569,3 +569,48 @@ Test Files  1 passed (1)
 5. **Hero + CTAs wired to no-op buttons** rather than `navigate("/c/.../chat")` — the breadcrumb already handles navigation between tabs and there's no requirement in PLAN.md for the hero CTAs to do anything specific. Wiring is a 5-line swap if a later task wants it.
 
 **Notes for next task (C-06 — Tasks kanban).** A-05 merged so the pending-review queue contract exists; the kanban can read that for the "Needs Review" column and stub the other three (Queued / In Progress / Completed) until A-08 ships the task lifecycle. Reference layout in `ui-import/dashboard.html` line ~960 (`view-tasks`). Same pattern as C-05: copy in `ui/src/copy/`, data-seam hook for the kanban data, page in `ui/src/pages/company-tabs/Tasks.tsx` (or wherever it routes — check shell breadcrumb tab list).
+
+---
+
+## C-06 · 2026-04-17 07:05 · agent-C
+**Commit:** 2bac0124 on `feat/frontend-port` (pushed to origin; rebased onto orchestrator state c6c8b2cd to pick up A-06.5)
+**Files:**
+- `ui/src/api/plugin-company.ts` (new — typed wrapper for the A-06.5 endpoints `GET reviews/pending`, `POST reviews/:id/approve|reject`)
+- `ui/src/copy/company-tasks.ts` (new — kanban copy)
+- `ui/src/hooks/useCompanyTasksData.ts` (new — `useQuery` + two `useMutation`s with cache invalidation, plus an exported pure `reviewToCard` projection used by tests)
+- `ui/src/pages/company-tabs/Tasks.tsx` (new — 4-column board, header with filter tabs + New Task CTA, per-column skeleton + error states)
+- `ui/src/pages/company-tabs/Tasks.test.tsx` (new — 9 tests)
+- `ui/src/pages/CompanyShell.tsx` (modified — adds `path="tasks"` route, hides breadcrumb on `/tasks` via new `ShellBreadcrumbSlot`, wires sidebar Company + Tasks nav buttons to navigate, marks active button with aria-current)
+- `ui/src/pages/CompanyShell.test.tsx` (modified — wraps render in `QueryClientProvider`, mocks `fetch` for the /tasks route mount, scopes the popover-Store-shortcut lookup to the popover panel, adds 3 new C-06 assertions)
+- `ui/src/lib/queryKeys.ts` (modified — adds `pluginCompany.pendingReviews` key)
+- `.agents/company-dev/checks/gate-C-06.sh` (new)
+
+**Tests:** 9 new Tasks tests + 3 new CompanyShell tests for C-06 wiring + 2 small Shell test fixes (popover scope + QueryClientProvider). 23/23 in the gate suite, plus the unchanged Overview / Strategy / Payments / Settings / Chat / Shell-C-03 tests still pass.
+
+Tasks tests cover: 4-column render, header (filter tabs + New Task), the "stub · A-08" badges on the three stub columns, live `GET /reviews/pending` request shape, card render from the API response, `POST /reviews/:id/approve` + cache invalidation, `POST /reviews/:id/reject`, stub-card rendering with no review actions, empty-column messages. Plus 2 unit tests for the pure `reviewToCard` projection.
+
+**Gate output (tail):**
+```
+ ✓ src/pages/company-tabs/Tasks.test.tsx (9 tests + 2 hook tests) 1.6s
+ ✓ src/pages/CompanyShell.test.tsx (14 tests) 25s
+ Test Files  2 passed (2)
+      Tests  23 passed (23)
+▶ gate-C-06: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: env-flake territory under load. Run 1: 269/282 files pass, 24 timeout failures. Run 2: 270/282 files pass, 13 timeout failures (different set). All failures are "Test timed out" on resource-heavy server / db / plugin-company tests (embedded postgres, e2e routines, migration replays, A-06 check-in poster). Same flake pattern as A-05 / C-05 reported. Spot-checked the one UI failure that surfaced (`IssuesList.test.tsx > shows a refinement hint`) — passes cleanly in isolation in 925ms; it's contention, not regression. No new flakes attributable to C-06.
+
+**Design decisions:**
+1. **Tasks is a sibling top-level view, not a Company sub-tab.** Followed the prototype: sidebar nav, no breadcrumb. New `ShellBreadcrumbSlot` keeps the conditional in one spot so future sibling views (Drive, Store) extend it the same way.
+2. **`useCompanyTasksData` returns a single `columns: KanbanColumn[]` array** with per-column `isStub` / `isLoading` / `error`. That keeps the page-level rendering loop completely uniform — it doesn't know which columns are live and which are stubs. When A-08 lands, swapping a stub for a `useQuery` is a 5-line change inside the hook.
+3. **`reviewToCard` is exported pure** so the component test can assert the projection without mocking the React Query stack.
+4. **Approve / Reject buttons share a `decisionPending` flag** (driven by `approveReview.isPending || rejectReview.isPending`) and disable both during a decide. Keeps double-submit out of the picture without per-card local state.
+5. **"stub · A-08" badge** in the In Progress / Queued / Completed column headers makes the live-vs-mock data boundary visible in the UI itself, not just in code comments. Trade-off: slightly noisier header until A-08 ships. Worth it for the dev/review experience.
+6. **Sidebar Company / Tasks buttons promoted from `<a href="#">` to real buttons** with `onClick` + `aria-current`. C-03 left them as static decoration since no second route existed yet — C-06 is the right time to make them work. Drive / Store stay static (no route exists).
+7. **Did NOT also chore-swap the C-05 `useCompanyTabsData` Strategy mock for the live A-06.5 `GET /profile`** — out of scope; the user flagged it as optional in the relaunch. Will queue it as a separate `chore(C-05): wire Strategy + Settings General to A-06.5 profile route` once C-06 lands cleanly.
+
+**Notes for next task (C-08 — Store view).** B-04 / B-05 are merged so the store-list and install-flow contracts exist. Store is a sidebar sibling like Tasks; same routing pattern (`/c/:companyId/store`, breadcrumb-hidden, sidebar `Store` nav active). Reference layout `ui-import/dashboard.html` line ~1055. After C-08, C-09 needs B-10/B-11/B-12 (employee detail tabs), which haven't merged yet — the orchestrator will say when.
+
+**P2 tech debt (flagged, not blocking):** the vite production build emits a 3.3 MB main chunk warning. Pre-existing — not from C-05 or C-06. Bundle splitting belongs in a later C-task (slot before C-14 if still a concern).
