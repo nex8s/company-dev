@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import type { ComponentProps } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { companyShell as copy } from "@/copy/company-shell";
 import { CompanyShell } from "./CompanyShell";
@@ -12,19 +14,22 @@ import { CompanyShell } from "./CompanyShell";
  *   2. all popovers open/close
  *   3. switches company on select
  *
- * We stub `@/lib/router` so the tests don't need a real BrowserRouter;
- * the module is wrapped by the Paperclip repo and exposes Link, useLocation,
- * useNavigate, useParams. `navigate` is spied so we can assert company
- * switching without a real history stack.
+ * We mock `@/lib/router` with the real `react-router-dom` primitives
+ * (Route/Routes/Navigate) plus stubbed hooks so CompanyShell's nested
+ * <Routes> works inside a MemoryRouter test harness. `useNavigate` is
+ * a spy so we can assert routing without wiring a real history observer.
  */
 
 const mockNavigate = vi.fn();
 const mockLocation = { pathname: "/c/company-x", search: "", hash: "" };
 
 vi.mock("@/lib/router", async () => {
-  const React = await import("react");
+  const rrd = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
   return {
-    Link: ({ children, ...props }: React.ComponentProps<"a">) => (
+    ...rrd,
+    Link: ({ children, ...props }: ComponentProps<"a">) => (
       <a {...props}>{children}</a>
     ),
     useLocation: () => mockLocation,
@@ -36,10 +41,16 @@ vi.mock("@/lib/router", async () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderShell(container: HTMLElement) {
+function renderShell(container: HTMLElement, initialPath = mockLocation.pathname) {
   const root = createRoot(container);
   act(() => {
-    root.render(<CompanyShell />);
+    root.render(
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="c/:companyId/*" element={<CompanyShell />} />
+        </Routes>
+      </MemoryRouter>,
+    );
   });
   return root;
 }
@@ -73,39 +84,40 @@ describe("CompanyShell (C-03)", () => {
     container.remove();
   });
 
-  it("mounts without throwing and lays out sidebar + breadcrumb + main", () => {
+  it("mounts without throwing and lays out sidebar + breadcrumb + main-content slot", () => {
     root = renderShell(container);
     expect(container.querySelector('[data-testid="company-shell"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="company-sidebar"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="company-main"]')).toBeTruthy();
+    // At index (/c/company-x) CompanyChat renders; at other paths MainContentPlaceholder does.
+    // Either resolution is a valid "main content area".
+    const mainArea =
+      container.querySelector('[data-testid="company-chat"]') ??
+      container.querySelector('[data-testid="company-main"]');
+    expect(mainArea).toBeTruthy();
   });
 
   it("renders every sidebar section: switcher, review pill, nav, apps, team (CEO + 5 depts), getting-started, footer", () => {
     root = renderShell(container);
-    // Company switcher trigger
-    expect(container.querySelector(`[aria-label="${copy.companySwitcher.triggerLabel}"]`)).toBeTruthy();
-    // Review pill trigger carries the summary as its aria-label
-    expect(container.querySelector(`[aria-label="${copy.reviewPill.summary(1)}"]`)).toBeTruthy();
-    // Primary nav items
+    expect(
+      container.querySelector(`[aria-label="${copy.companySwitcher.triggerLabel}"]`),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(`[aria-label="${copy.reviewPill.summary(1)}"]`),
+    ).toBeTruthy();
     const sidebar = container.querySelector('[data-testid="company-sidebar"]');
     expect(sidebar?.textContent).toContain(copy.nav.company);
     expect(sidebar?.textContent).toContain(copy.nav.tasks);
     expect(sidebar?.textContent).toContain(copy.nav.drive);
-    // Apps heading (CSS uppercase affects rendering but not textContent)
     expect(sidebar?.textContent).toContain(copy.sections.apps);
     expect(sidebar?.textContent).toContain("Landing Page");
-    // Team CEO + all 5 dept groups
     expect(sidebar?.textContent).toContain(copy.sections.ceoSuffix);
     for (const dept of ["engineering", "marketing", "operations", "sales", "support"] as const) {
       expect(container.querySelector(`[data-testid="dept-${dept}"]`)).toBeTruthy();
     }
-    // Getting Started panel with 1/7 heading (one step mocked as done)
     expect(container.querySelector('[data-testid="getting-started-panel"]')).toBeTruthy();
     expect(sidebar?.textContent).toContain(copy.gettingStarted.heading(1, 7));
-    // Getting Started has a progress bar
     expect(container.querySelector('[role="progressbar"]')).toBeTruthy();
-    // Footer: trial badge + subscribe + user menu trigger
     expect(sidebar?.textContent).toContain(copy.trial.label(5));
     expect(sidebar?.textContent).toContain(copy.trial.subscribe);
     expect(container.querySelector('[aria-label="User menu"]')).toBeTruthy();
@@ -130,7 +142,7 @@ describe("CompanyShell (C-03)", () => {
 
   it("marks Overview active when the url is /c/:companyId/overview", () => {
     mockLocation.pathname = "/c/company-x/overview";
-    root = renderShell(container);
+    root = renderShell(container, "/c/company-x/overview");
     const active = container.querySelector(
       '[data-testid="company-breadcrumb"] [aria-current="page"]',
     );
@@ -139,11 +151,11 @@ describe("CompanyShell (C-03)", () => {
 
   it("navigates to the tab route when a breadcrumb tab is clicked", () => {
     root = renderShell(container);
-    const overviewBtn = container.querySelector(
+    const strategyBtn = container.querySelector(
       '[data-testid="company-breadcrumb"] [data-tab="strategy"]',
     );
-    expect(overviewBtn).toBeTruthy();
-    clickElement(overviewBtn!);
+    expect(strategyBtn).toBeTruthy();
+    clickElement(strategyBtn!);
     expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/strategy");
   });
 
@@ -153,11 +165,7 @@ describe("CompanyShell (C-03)", () => {
       `[aria-label="${copy.companySwitcher.triggerLabel}"]`,
     )!;
     clickElement(trigger);
-    // Radix portals the popover to document.body by default — query the
-    // whole document for the "Add company" entry (unique to this popover).
-    const panel = document.body.querySelector(
-      '[data-slot="popover-content"]',
-    );
+    const panel = document.body.querySelector('[data-slot="popover-content"]');
     expect(panel).toBeTruthy();
     expect(panel?.textContent).toContain(copy.companySwitcher.addCompany);
     expect(panel?.textContent).toContain(copy.companySwitcher.store);
@@ -180,7 +188,6 @@ describe("CompanyShell (C-03)", () => {
     root = renderShell(container);
     const trigger = container.querySelector('[aria-label="User menu"]')!;
     clickElement(trigger);
-    // The user menu portals too — use an item unique to it.
     const body = document.body.textContent ?? "";
     expect(body).toContain(copy.userMenu.upgradePlan);
     expect(body).toContain(copy.userMenu.topUpCredits);
@@ -190,12 +197,8 @@ describe("CompanyShell (C-03)", () => {
     expect(body).toContain(copy.userMenu.signOut);
   });
 
-  it("switches company when a non-active option is clicked in the switcher", () => {
+  it("switches company when the Store shortcut is clicked in the switcher popover", () => {
     root = renderShell(container);
-    // Add a second company to the mock by re-using the hook path — simplest
-    // way is to open the switcher and click the (non-existent) add button
-    // to prove the nav wiring works without needing a second seeded company.
-    // Instead we click the store shortcut which must navigate to `/c/:id/store`.
     const trigger = container.querySelector(
       `[aria-label="${copy.companySwitcher.triggerLabel}"]`,
     )!;
@@ -215,7 +218,12 @@ describe("CompanyShell (C-03)", () => {
     expect(trigger?.getAttribute("data-state")).toBe("closed");
     clickElement(trigger!);
     expect(trigger?.getAttribute("data-state")).toBe("open");
-    // Agent rendered in the expanded content
     expect(marketing?.textContent).toContain("Growth Marketer");
+  });
+
+  it("renders CompanyChat at the /c/:companyId index route", () => {
+    root = renderShell(container);
+    expect(container.querySelector('[data-testid="company-chat"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="chat-composer"]')).toBeTruthy();
   });
 });

@@ -21,7 +21,8 @@ import {
   Trello,
   X,
 } from "lucide-react";
-import { useLocation, useNavigate, useParams } from "@/lib/router";
+import { Route, Routes, useLocation, useNavigate, useParams } from "@/lib/router";
+import { CompanyChat } from "./CompanyChat";
 import {
   Popover,
   PopoverContent,
@@ -110,7 +111,12 @@ export function CompanyShell() {
       <Sidebar data={data} />
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         <CompanyBreadcrumb companyId={companyId} />
-        <MainContentPlaceholder companyId={companyId} />
+        <Routes>
+          {/* C-04 Chat is the default view. Other tabs get a placeholder
+              until C-05 through C-10 ship their content. */}
+          <Route index element={<CompanyChat />} />
+          <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
+        </Routes>
       </div>
     </div>
   );
