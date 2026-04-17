@@ -35,16 +35,19 @@ vi.mock("@/lib/router", async () => {
     ),
     useLocation: () => mockLocation,
     useNavigate: () => mockNavigate,
-    // Resolve params from the current mocked path so nested routes (e.g.
-    // `/c/:companyId/team/:agentId`) receive the agent id in addition to
-    // the company id. Shell-only routes still see just `{ companyId }`.
+    // Resolve params from the current mocked path so nested routes
+    // (`/team/:agentId`, `/apps/:appId`) get all their params, not just
+    // the company id.
     useParams: () => {
-      const m = mockLocation.pathname.match(
-        /^\/c\/([^/]+)(?:\/team\/([^/]+))?/,
-      );
-      return m
-        ? { companyId: m[1], ...(m[2] ? { agentId: m[2] } : {}) }
-        : { companyId: "company-x" };
+      const path = mockLocation.pathname;
+      const co = path.match(/^\/c\/([^/]+)/)?.[1];
+      const agentId = path.match(/^\/c\/[^/]+\/team\/([^/]+)/)?.[1];
+      const appId = path.match(/^\/c\/[^/]+\/apps\/([^/]+)/)?.[1];
+      return {
+        ...(co ? { companyId: co } : { companyId: "company-x" }),
+        ...(agentId ? { agentId } : {}),
+        ...(appId ? { appId } : {}),
+      };
     },
   };
 });
@@ -92,15 +95,29 @@ describe("CompanyShell (C-03)", () => {
     mockLocation.pathname = "/c/company-x";
     container = document.createElement("div");
     document.body.appendChild(container);
-    // The /tasks route inside the shell hits A-06.5's HTTP endpoint — stub
-    // fetch with an empty list so that mount path doesn't blow up. Tests
-    // that don't load /tasks ignore the mock entirely.
-    globalThis.fetch = vi.fn(async () =>
-      new Response(JSON.stringify({ reviews: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    ) as unknown as typeof fetch;
+    // Several routes mounted under the shell hit live HTTP endpoints
+    // (A-06.5 reviews, B-07 catalog/subscription). Return safe-empty
+    // responses so any of those mount paths don't blow up. Tests that
+    // care about the request shape supply their own fetch mock.
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/plugin-payments/catalog")) {
+        return new Response(
+          JSON.stringify({ plans: [], topUps: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/plugin-payments/subscription")) {
+        return new Response(
+          JSON.stringify({ subscription: null }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ reviews: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -348,5 +365,69 @@ describe("CompanyShell (C-03)", () => {
     );
     expect(storeBtn?.getAttribute("aria-current")).toBe("page");
     expect(companyBtn?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("navigates to /apps/:appId when the sidebar Apps row is clicked (C-10)", () => {
+    root = renderShell(container);
+    const appBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-app-id="app-landing"]',
+    );
+    expect(appBtn).toBeTruthy();
+    clickElement(appBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/apps/app-landing");
+  });
+
+  it("hides the breadcrumb and renders AppDetail at /c/:companyId/apps/:appId (C-10)", () => {
+    mockLocation.pathname = "/c/company-x/apps/app-landing";
+    root = renderShell(container, "/c/company-x/apps/app-landing");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    // App data isn't fetched in this shell test (no fetch mock for the
+    // app endpoint), so we expect the skeleton or the not-found / error
+    // states — any of which proves AppDetail mounted.
+    const mounted =
+      container.querySelector('[data-testid="app-detail"]') ??
+      container.querySelector('[data-testid="app-detail-skeleton"]') ??
+      container.querySelector('[data-testid="app-detail-error"]') ??
+      container.querySelector('[data-testid="app-detail-not-found"]');
+    expect(mounted).toBeTruthy();
+  });
+
+  it("trial subscribe link navigates to /upgrade (C-11)", () => {
+    root = renderShell(container);
+    clickElement(container.querySelector('[data-testid="trial-subscribe-link"]')!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/upgrade");
+  });
+
+  it("UserMenu Upgrade Plan item navigates to /upgrade (C-11)", () => {
+    root = renderShell(container);
+    clickElement(container.querySelector('[aria-label="User menu"]')!);
+    const upgrade = document.body.querySelector('[data-testid="usermenu-upgrade"]');
+    expect(upgrade).toBeTruthy();
+    clickElement(upgrade!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/upgrade");
+  });
+
+  it("hides the breadcrumb and renders Upgrade at /c/:companyId/upgrade (C-11)", () => {
+    mockLocation.pathname = "/c/company-x/upgrade";
+    root = renderShell(container, "/c/company-x/upgrade");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="upgrade-view"]')).toBeTruthy();
+  });
+
+  it("navigates the sidebar Drive nav button to /c/:companyId/drive (C-07)", () => {
+    root = renderShell(container);
+    const driveBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Drive"]',
+    );
+    expect(driveBtn).toBeTruthy();
+    clickElement(driveBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/drive");
+  });
+
+  it("hides the breadcrumb and renders Drive at /c/:companyId/drive (C-07)", () => {
+    mockLocation.pathname = "/c/company-x/drive";
+    root = renderShell(container, "/c/company-x/drive");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="drive-view"]')).toBeTruthy();
   });
 });
