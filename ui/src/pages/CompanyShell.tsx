@@ -27,6 +27,7 @@ import { CompanyOverview } from "./company-tabs/Overview";
 import { CompanyStrategy } from "./company-tabs/Strategy";
 import { CompanyPayments } from "./company-tabs/Payments";
 import { CompanySettingsTab } from "./company-tabs/Settings";
+import { CompanyTasks } from "./company-tabs/Tasks";
 import {
   Popover,
   PopoverContent,
@@ -112,18 +113,24 @@ export function CompanyShell() {
       data-testid="company-shell"
       className="flex h-screen w-full bg-white overflow-hidden"
     >
-      <Sidebar data={data} />
+      <Sidebar data={data} companyId={companyId} />
       <div className="flex-1 flex flex-col min-w-0 bg-white">
-        <CompanyBreadcrumb companyId={companyId} />
+        {/* C-06 Tasks is a sibling top-level view (sidebar nav, not the
+            company-sub-tab breadcrumb), so the breadcrumb hides on /tasks
+            to keep the page chrome focused. C-07–C-10 will follow the
+            same pattern as they ship. */}
+        <ShellBreadcrumbSlot companyId={companyId} />
         <Routes>
           {/* C-04 Chat is the default view. C-05 filled in Overview /
-              Strategy / Payments / Settings. Remaining tabs (Tasks, Drive,
-              Store, Team, Apps) keep the placeholder until C-06 — C-10. */}
+              Strategy / Payments / Settings. C-06 added Tasks. Remaining
+              sidebar items (Drive, Store) keep the placeholder until
+              C-07 — C-10. */}
           <Route index element={<CompanyChat />} />
           <Route path="overview" element={<CompanyOverview />} />
           <Route path="strategy" element={<CompanyStrategy />} />
           <Route path="payments" element={<CompanyPayments />} />
           <Route path="settings/*" element={<CompanySettingsTab />} />
+          <Route path="tasks" element={<CompanyTasks />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
@@ -166,7 +173,7 @@ function CompanyShellError({ error }: { error: Error }) {
 // Sidebar
 // ---------------------------------------------------------------------------
 
-function Sidebar({ data }: { data: CompanyShellData }) {
+function Sidebar({ data, companyId }: { data: CompanyShellData; companyId: string }) {
   return (
     <aside
       data-testid="company-sidebar"
@@ -187,7 +194,7 @@ function Sidebar({ data }: { data: CompanyShellData }) {
         aria-label="Company sidebar"
         className="mt-4 px-2 space-y-0.5 flex-1 overflow-y-auto"
       >
-        <SidebarPrimaryNav />
+        <SidebarPrimaryNav companyId={companyId} />
         <AppsSection apps={data.apps} />
         <TeamSection ceo={data.ceo} departments={data.departments} />
         <GettingStartedPanel checklist={data.gettingStarted} />
@@ -386,14 +393,24 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
 // Primary nav + Apps + Team sections
 // ---------------------------------------------------------------------------
 
-function SidebarPrimaryNav() {
+function SidebarPrimaryNav({ companyId }: { companyId: string }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const path = location.pathname;
+  // "Company" lights up for any /c/:companyId/* path that is NOT a sibling
+  // top-level view (Tasks today; Drive / Store later). Tasks lights up only
+  // when on /c/:companyId/tasks.
+  const onTasks = path === `/c/${companyId}/tasks`;
+  const onCompany = !onTasks;
+
   return (
     <>
       <SidebarNavItem
         icon={<House className="text-lg" strokeWidth={1.5} />}
         label={copy.nav.company}
         trailing={<ChevronRight className="size-3 text-mist" />}
-        active
+        active={onCompany}
+        onClick={() => navigate(`/c/${companyId}`)}
       />
       <SidebarNavItem
         icon={<Trello className="text-lg" strokeWidth={1.5} />}
@@ -403,6 +420,8 @@ function SidebarPrimaryNav() {
             1
           </span>
         }
+        active={onTasks}
+        onClick={() => navigate(`/c/${companyId}/tasks`)}
       />
       <SidebarNavItem
         icon={<Database className="text-lg" strokeWidth={1.5} />}
@@ -421,17 +440,22 @@ function SidebarNavItem({
   label,
   trailing,
   active,
+  onClick,
 }: {
   icon: ReactNode;
   label: string;
   trailing?: ReactNode;
   active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <a
-      href="#"
-      className={`flex items-center justify-between px-2 py-1.5 rounded-md transition-colors ${
-        active ? "text-ink" : "text-mist hover:bg-black/5"
+    <button
+      type="button"
+      onClick={onClick}
+      data-nav-item={label}
+      aria-current={active ? "page" : undefined}
+      className={`w-full text-left flex items-center justify-between px-2 py-1.5 rounded-md transition-colors ${
+        active ? "text-ink bg-black/5" : "text-mist hover:bg-black/5"
       }`}
     >
       <span className="flex items-center gap-2">
@@ -439,7 +463,7 @@ function SidebarNavItem({
         {label}
       </span>
       {trailing}
-    </a>
+    </button>
   );
 }
 
@@ -736,6 +760,21 @@ function UserMenuItem({
 // ---------------------------------------------------------------------------
 // Top breadcrumb (sub-tabs) + main content placeholder
 // ---------------------------------------------------------------------------
+
+/**
+ * Shell-level breadcrumb slot. The 5 Company sub-tabs only apply to
+ * `/c/:companyId/(chat|overview|strategy|payments|settings)` views, so
+ * the slot collapses entirely on sibling top-level views (Tasks today;
+ * Drive / Store later) — that keeps the page chrome of those views
+ * focused on their own headers.
+ */
+function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
+  const location = useLocation();
+  const path = location.pathname;
+  const isSiblingView = path === `/c/${companyId}/tasks`;
+  if (isSiblingView) return null;
+  return <CompanyBreadcrumb companyId={companyId} />;
+}
 
 function CompanyBreadcrumb({ companyId }: { companyId: string }) {
   const location = useLocation();

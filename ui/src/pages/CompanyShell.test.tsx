@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { companyShell as copy } from "@/copy/company-shell";
 import { CompanyShell } from "./CompanyShell";
@@ -42,14 +43,23 @@ vi.mock("@/lib/router", async () => {
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 function renderShell(container: HTMLElement, initialPath = mockLocation.pathname) {
+  // C-06's Tasks page mounts under the shell and uses React Query. Wrap
+  // the shell in a QueryClientProvider so that route also renders without
+  // throwing — for routes that don't use React Query the provider is
+  // a no-op cost.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   const root = createRoot(container);
   act(() => {
     root.render(
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route path="c/:companyId/*" element={<CompanyShell />} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route path="c/:companyId/*" element={<CompanyShell />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
   });
   return root;
@@ -72,6 +82,15 @@ describe("CompanyShell (C-03)", () => {
     mockLocation.pathname = "/c/company-x";
     container = document.createElement("div");
     document.body.appendChild(container);
+    // The /tasks route inside the shell hits A-06.5's HTTP endpoint — stub
+    // fetch with an empty list so that mount path doesn't blow up. Tests
+    // that don't load /tasks ignore the mock entirely.
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ reviews: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -203,8 +222,13 @@ describe("CompanyShell (C-03)", () => {
       `[aria-label="${copy.companySwitcher.triggerLabel}"]`,
     )!;
     clickElement(trigger);
+    // C-06 wired the sidebar Store nav button which has the same label as
+    // the popover shortcut — scope the lookup to the popover content panel
+    // so the test resolves to the right button.
+    const popover = document.body.querySelector('[data-slot="popover-content"]');
+    expect(popover).toBeTruthy();
     const storeBtn = Array.from(
-      document.body.querySelectorAll("button"),
+      popover!.querySelectorAll("button"),
     ).find((b) => b.textContent?.trim() === copy.companySwitcher.store);
     expect(storeBtn).toBeTruthy();
     clickElement(storeBtn!);
@@ -225,5 +249,36 @@ describe("CompanyShell (C-03)", () => {
     root = renderShell(container);
     expect(container.querySelector('[data-testid="company-chat"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="chat-composer"]')).toBeTruthy();
+  });
+
+  it("navigates the sidebar Tasks nav button to /c/:companyId/tasks (C-06)", () => {
+    root = renderShell(container);
+    const tasksBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Tasks"]',
+    );
+    expect(tasksBtn).toBeTruthy();
+    clickElement(tasksBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/tasks");
+  });
+
+  it("hides the breadcrumb when on /c/:companyId/tasks (C-06)", () => {
+    mockLocation.pathname = "/c/company-x/tasks";
+    root = renderShell(container, "/c/company-x/tasks");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    // CompanyTasks page mounts.
+    expect(container.querySelector('[data-testid="company-tasks"]')).toBeTruthy();
+  });
+
+  it("marks the sidebar Tasks button active (and Company inactive) when on /tasks (C-06)", () => {
+    mockLocation.pathname = "/c/company-x/tasks";
+    root = renderShell(container, "/c/company-x/tasks");
+    const tasksBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Tasks"]',
+    );
+    const companyBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Company"]',
+    );
+    expect(tasksBtn?.getAttribute("aria-current")).toBe("page");
+    expect(companyBtn?.getAttribute("aria-current")).toBeNull();
   });
 });
