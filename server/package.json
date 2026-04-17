@@ -54,8 +54,12 @@
     "@paperclipai/adapter-utils": "workspace:*",
     "@paperclipai/db": "workspace:*",
     "@paperclipai/plugin-company": "workspace:*",
+<<<<<<< HEAD
     "@paperclipai/plugin-connect-tools": "workspace:*",
     "@paperclipai/plugin-identity": "workspace:*",
+=======
+    "@paperclipai/plugin-dashboards": "workspace:*",
+>>>>>>> origin/feat/backend-wiring
     "@paperclipai/plugin-sdk": "workspace:*",
     "@paperclipai/shared": "workspace:*",
     "ajv": "^8.18.0",

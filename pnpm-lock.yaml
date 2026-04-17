@@ -329,11 +329,24 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.12.0)(jiti@2.6.1)(jsdom@28.1.0(@noble/hashes@2.0.1))(lightningcss@1.30.2)(tsx@4.21.0)
 
+<<<<<<< HEAD
   packages/plugin-connect-tools:
+=======
+  packages/plugin-dashboards:
+>>>>>>> origin/feat/backend-wiring
     dependencies:
       '@paperclipai/db':
         specifier: workspace:*
         version: link:../db
+<<<<<<< HEAD
+=======
+      '@paperclipai/plugin-payments':
+        specifier: workspace:*
+        version: link:../plugin-payments
+      '@paperclipai/shared':
+        specifier: workspace:*
+        version: link:../shared
+>>>>>>> origin/feat/backend-wiring
       drizzle-orm:
         specifier: ^0.38.4
         version: 0.38.4(@electric-sql/pglite@0.3.15)(@types/react@19.2.14)(kysely@0.28.11)(pg@8.18.0)(postgres@3.4.8)(react@19.2.4)
@@ -343,6 +356,30 @@ importers:
       zod:
         specifier: ^3.24.2
         version: 3.25.76
+<<<<<<< HEAD
+=======
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      '@types/supertest':
+        specifier: ^6.0.2
+        version: 6.0.3
+      supertest:
+        specifier: ^7.0.0
+        version: 7.2.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.12.0)(jiti@2.6.1)(jsdom@28.1.0(@noble/hashes@2.0.1))(lightningcss@1.30.2)(tsx@4.21.0)
+
+  packages/plugin-identity:
+>>>>>>> origin/feat/backend-wiring
     devDependencies:
       '@types/express':
         specifier: ^5.0.0
@@ -390,6 +427,28 @@ importers:
       supertest:
         specifier: ^7.0.0
         version: 7.2.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.12.0)(jiti@2.6.1)(jsdom@28.1.0(@noble/hashes@2.0.1))(lightningcss@1.30.2)(tsx@4.21.0)
+
+  packages/plugin-payments:
+    dependencies:
+      '@paperclipai/db':
+        specifier: workspace:*
+        version: link:../db
+      '@paperclipai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@electric-sql/pglite@0.3.15)(@types/react@19.2.14)(kysely@0.28.11)(pg@8.18.0)(postgres@3.4.8)(react@19.2.4)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -638,12 +697,18 @@ importers:
       '@paperclipai/plugin-company':
         specifier: workspace:*
         version: link:../packages/plugin-company
+<<<<<<< HEAD
       '@paperclipai/plugin-connect-tools':
         specifier: workspace:*
         version: link:../packages/plugin-connect-tools
       '@paperclipai/plugin-identity':
         specifier: workspace:*
         version: link:../packages/plugin-identity
+=======
+      '@paperclipai/plugin-dashboards':
+        specifier: workspace:*
+        version: link:../packages/plugin-dashboards
+>>>>>>> origin/feat/backend-wiring
       '@paperclipai/plugin-sdk':
         specifier: workspace:*
         version: link:../packages/plugins/sdk
