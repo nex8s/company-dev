@@ -35,16 +35,19 @@ vi.mock("@/lib/router", async () => {
     ),
     useLocation: () => mockLocation,
     useNavigate: () => mockNavigate,
-    // Resolve params from the current mocked path so nested routes (e.g.
-    // `/c/:companyId/team/:agentId`) receive the agent id in addition to
-    // the company id. Shell-only routes still see just `{ companyId }`.
+    // Resolve params from the current mocked path so nested routes
+    // (`/team/:agentId`, `/apps/:appId`) get all their params, not just
+    // the company id.
     useParams: () => {
-      const m = mockLocation.pathname.match(
-        /^\/c\/([^/]+)(?:\/team\/([^/]+))?/,
-      );
-      return m
-        ? { companyId: m[1], ...(m[2] ? { agentId: m[2] } : {}) }
-        : { companyId: "company-x" };
+      const path = mockLocation.pathname;
+      const co = path.match(/^\/c\/([^/]+)/)?.[1];
+      const agentId = path.match(/^\/c\/[^/]+\/team\/([^/]+)/)?.[1];
+      const appId = path.match(/^\/c\/[^/]+\/apps\/([^/]+)/)?.[1];
+      return {
+        ...(co ? { companyId: co } : { companyId: "company-x" }),
+        ...(agentId ? { agentId } : {}),
+        ...(appId ? { appId } : {}),
+      };
     },
   };
 });
@@ -348,5 +351,30 @@ describe("CompanyShell (C-03)", () => {
     );
     expect(storeBtn?.getAttribute("aria-current")).toBe("page");
     expect(companyBtn?.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("navigates to /apps/:appId when the sidebar Apps row is clicked (C-10)", () => {
+    root = renderShell(container);
+    const appBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-app-id="app-landing"]',
+    );
+    expect(appBtn).toBeTruthy();
+    clickElement(appBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/apps/app-landing");
+  });
+
+  it("hides the breadcrumb and renders AppDetail at /c/:companyId/apps/:appId (C-10)", () => {
+    mockLocation.pathname = "/c/company-x/apps/app-landing";
+    root = renderShell(container, "/c/company-x/apps/app-landing");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    // App data isn't fetched in this shell test (no fetch mock for the
+    // app endpoint), so we expect the skeleton or the not-found / error
+    // states — any of which proves AppDetail mounted.
+    const mounted =
+      container.querySelector('[data-testid="app-detail"]') ??
+      container.querySelector('[data-testid="app-detail-skeleton"]') ??
+      container.querySelector('[data-testid="app-detail-error"]') ??
+      container.querySelector('[data-testid="app-detail-not-found"]');
+    expect(mounted).toBeTruthy();
   });
 });

@@ -165,4 +165,24 @@ export const queryKeys = {
     agentCards: (companyId: string, agentId: string) =>
       ["plugin-identity", companyId, "agents", agentId, "cards"] as const,
   },
+  pluginAppsBuilder: {
+    app: (companyId: string, appId: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId] as const,
+    preview: (companyId: string, appId: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId, "preview"] as const,
+    files: (companyId: string, appId: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId, "files"] as const,
+    fileBlob: (companyId: string, appId: string, path: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId, "files", "blob", path] as const,
+    deployments: (companyId: string, appId: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId, "deployments"] as const,
+    env: (companyId: string, appId: string) =>
+      ["plugin-apps-builder", companyId, "apps", appId, "env"] as const,
+  },
+  pluginPayments: {
+    subscription: (companyId: string) =>
+      ["plugin-payments", companyId, "subscription"] as const,
+    catalog: (companyId: string) =>
+      ["plugin-payments", companyId, "catalog"] as const,
+  },
 };

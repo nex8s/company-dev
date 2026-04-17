@@ -30,6 +30,7 @@ import { CompanySettingsTab } from "./company-tabs/Settings";
 import { CompanyTasks } from "./company-tabs/Tasks";
 import { EmployeeDetail } from "./employee/EmployeeDetail";
 import { Store } from "./Store";
+import { AppDetail } from "./app-detail/AppDetail";
 import {
   Popover,
   PopoverContent,
@@ -135,6 +136,7 @@ export function CompanyShell() {
           <Route path="tasks" element={<CompanyTasks />} />
           <Route path="team/:agentId/*" element={<EmployeeDetail />} />
           <Route path="store" element={<Store />} />
+          <Route path="apps/:appId/*" element={<AppDetail />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
@@ -199,7 +201,7 @@ function Sidebar({ data, companyId }: { data: CompanyShellData; companyId: strin
         className="mt-4 px-2 space-y-0.5 flex-1 overflow-y-auto"
       >
         <SidebarPrimaryNav companyId={companyId} />
-        <AppsSection apps={data.apps} />
+        <AppsSection apps={data.apps} companyId={companyId} />
         <TeamSection ceo={data.ceo} departments={data.departments} companyId={companyId} />
         <GettingStartedPanel checklist={data.gettingStarted} />
       </nav>
@@ -474,7 +476,14 @@ function SidebarNavItem({
   );
 }
 
-function AppsSection({ apps }: { apps: CompanyShellData["apps"] }) {
+function AppsSection({
+  apps,
+  companyId,
+}: {
+  apps: CompanyShellData["apps"];
+  companyId: string;
+}) {
+  const navigate = useNavigate();
   if (apps.length === 0) return null;
   return (
     <div className="mt-6">
@@ -482,10 +491,12 @@ function AppsSection({ apps }: { apps: CompanyShellData["apps"] }) {
         {copy.sections.apps}
       </div>
       {apps.map((app) => (
-        <a
+        <button
           key={app.id}
-          href="#"
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-black/5 group transition-colors"
+          type="button"
+          data-app-id={app.id}
+          onClick={() => navigate(`/c/${companyId}/apps/${app.id}`)}
+          className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-black/5 group transition-colors"
         >
           <span className="w-6 h-6 rounded bg-black/5 flex items-center justify-center text-mist border border-hairline group-hover:border-black/20">
             <Globe className="size-3.5" />
@@ -498,7 +509,7 @@ function AppsSection({ apps }: { apps: CompanyShellData["apps"] }) {
               </span>
             )}
           </span>
-        </a>
+        </button>
       ))}
     </div>
   );
@@ -794,11 +805,12 @@ function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
   const path = location.pathname;
   // Sibling views render their own header chrome — the company-sub-tab
   // breadcrumb doesn't apply. Tasks (C-06), Employee Detail (C-09),
-  // Store (C-08).
+  // Store (C-08), App Detail (C-10).
   const isSiblingView =
     path === `/c/${companyId}/tasks` ||
     path === `/c/${companyId}/store` ||
-    path.startsWith(`/c/${companyId}/team/`);
+    path.startsWith(`/c/${companyId}/team/`) ||
+    path.startsWith(`/c/${companyId}/apps/`);
   if (isSiblingView) return null;
   return <CompanyBreadcrumb companyId={companyId} />;
 }
