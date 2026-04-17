@@ -1,9 +1,9 @@
-# Orchestrator State — 2026-04-17 05:25
+# Orchestrator State — 2026-04-17 05:55
 
 ## Master tip
-`cb5a634f` on `origin/master`
+`81298947` on `origin/master`
 
-## Merged tasks (13/39 = 33%)
+## Merged tasks (14/39 = 36%)
 
 | ID | Task | Merge commit |
 |---|---|---|
@@ -20,13 +20,14 @@
 | C-02 | Design tokens + Tailwind theme | 4712000a |
 | C-03 | Company shell (sidebar, popovers, Getting Started) | 8f4537a9 |
 | C-04 | Company Chat view + C-03 stub-match patch | cb5a634f |
+| A-06 | heartbeat check-in poster (plugin-company) | 81298947 |
 
 ## Next tasks per agent
 
-### Agent A — next: A-06 (heartbeat check-in messages)
-- Branch: `feat/backend-wiring` at fb72f727
-- Status: A-06 not started, clean tree
-- Side task queued: zod-validated HTTP routes for plugin-company API (getChecklist, completeStep, listPendingReviews, approveReview, rejectReview, CompanyProfile CRUD) — Agent C needs these to swap stubs for live queries
+### Agent A — next: A-06.5 (HTTP routes + run-stream wiring) — AUTHORIZED 2026-04-17 05:55
+- Branch: `feat/backend-wiring` at 40ff1adb (merged to master via 81298947)
+- Scope: zod-validated HTTP routes for plugin-company (getChecklist, completeStep, listPendingReviews, approveReview, rejectReview, CompanyProfile CRUD) + subscribe A-06 check-in-poster to Paperclip's run-status stream in the same plugin-bootstrap module
+- Unblocks: Agent C's C-05 (swap stubs for live queries)
 - Handoff file: `.agents/company-dev/questions/agent-a.md`
 
 ### Agent B — next: B-10 (BankProvider + Mock)
