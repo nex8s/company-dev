@@ -32,7 +32,15 @@ import { assetRoutes } from "./routes/assets.js";
 import { accessRoutes } from "./routes/access.js";
 import { pluginRoutes } from "./routes/plugins.js";
 import { adapterRoutes } from "./routes/adapters.js";
+import { pluginCompanyRoutes } from "./routes/plugin-company.js";
 import { pluginUiStaticRoutes } from "./routes/plugin-ui-static.js";
+import {
+  createCheckInPoster,
+  resolveIssueIdForRunByExecution,
+} from "@paperclipai/plugin-company";
+import { installCheckInPosterForCompany } from "@paperclipai/plugin-company/server/index";
+import { subscribeCompanyLiveEvents } from "./services/live-events.js";
+import { companies as companiesTable } from "@paperclipai/db";
 import { applyUiBranding } from "./ui-branding.js";
 import { logger } from "./middleware/logger.js";
 import { DEFAULT_LOCAL_PLUGIN_DIR, pluginLoader } from "./services/plugin-loader.js";
@@ -274,6 +282,7 @@ export async function createApp(
     ),
   );
   api.use(adapterRoutes());
+  api.use(pluginCompanyRoutes(db));
   api.use(
     accessRoutes(db, {
       deploymentMode: opts.deploymentMode,
@@ -409,6 +418,34 @@ export async function createApp(
   void toolDispatcher.initialize().catch((err) => {
     logger.error({ err }, "Failed to initialize plugin tool dispatcher");
   });
+
+  // plugin-company: subscribe the A-06 check-in poster to every existing
+  // company's heartbeat run-status stream. New companies created at runtime
+  // are not auto-wired here (see questions/orchestrator.md — A-06.5 follow-up).
+  const checkInPoster = createCheckInPoster({
+    db,
+    resolveIssueIdForRun: (runId, companyId) =>
+      resolveIssueIdForRunByExecution(db, runId, companyId),
+  });
+  const checkInInstallations: Array<{ dispose: () => void }> = [];
+  void db
+    .select({ id: companiesTable.id })
+    .from(companiesTable)
+    .then((rows) => {
+      for (const row of rows) {
+        checkInInstallations.push(
+          installCheckInPosterForCompany(row.id, {
+            subscribe: subscribeCompanyLiveEvents,
+            poster: checkInPoster,
+            onError: (err, event) =>
+              logger.warn({ err, event }, "plugin-company check-in poster failed"),
+          }),
+        );
+      }
+    })
+    .catch((err) => {
+      logger.error({ err }, "Failed to install plugin-company check-in posters");
+    });
   const devWatcher = opts.uiMode === "vite-dev"
     ? createPluginDevWatcher(
       lifecycle,
@@ -429,6 +466,7 @@ export async function createApp(
     if (feedbackExportTimer) clearInterval(feedbackExportTimer);
     devWatcher?.close();
     viteHtmlRenderer?.dispose();
+    for (const installation of checkInInstallations) installation.dispose();
     hostServiceCleanup.disposeAll();
     hostServiceCleanup.teardown();
   });

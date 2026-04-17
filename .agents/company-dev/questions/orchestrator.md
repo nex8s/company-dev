@@ -279,3 +279,40 @@ repo-root configuration file, on the boundary of "Paperclip core" per the
 Agent A prompt's hard rule. Ask: should Agent A land this edit as a chore
 commit on `feat/backend-wiring`, or would you rather the orchestrator land it
 directly on master?
+
+---
+
+## 2026-04-17 · agent-A · A-06.5: new-company auto-wire gap for the check-in poster
+
+A-06.5 wires the A-06 check-in poster onto Paperclip's run-status stream
+by subscribing per-company at server boot. The boot loop in
+`server/src/app.ts` looks up every existing `companies` row and calls
+`installCheckInPosterForCompany(row.id, ...)`.
+
+**Gap:** companies created **after** server boot are not auto-wired. Their
+heartbeat lifecycle events fire normally, but no plugin-company subscriber
+exists, so no "via check-in" comments are posted to those companies'
+chat threads.
+
+Two paths I considered, both blocked on a core decision:
+
+1. **Add a global live-events subscriber API** in
+   `server/src/services/live-events.ts` — a `subscribeAllCompaniesLiveEvents`
+   that fires for every company. Single subscription, no per-company churn.
+   This is a Paperclip-core file edit.
+
+2. **Subscribe to the existing `company.created` plugin event** via the
+   plugin event bus, then install a check-in poster on the new company.
+   This requires `logActivity` (or some other path) to actually emit
+   `company.created` to the bus — currently `companies.ts`'s create path
+   doesn't seem to log the activity. So either we add the log call to
+   core, or we need a different hook.
+
+For now I shipped the boot-time install loop; it's correct for the demo /
+dev flow where companies are created out-of-band before server boot. Ask:
+which of (1) or (2) do you want me to land, and on which branch? Both are
+small; option (1) is one new function in `live-events.ts`, option (2) is
+a one-line `logActivity` call in the company create path.
+
+`gate-A-06.5` and full-repo `typecheck` + `test:run` (1600/1601 pass, 1
+skipped, 0 failed) are all green. No env-flakes hit on this run.

@@ -4,6 +4,44 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-06.5 · 2026-04-17 14:01 · agent-A
+**Commit:** on `feat/backend-wiring` (about to push)
+**Files:** packages/plugin-company/src/server/{router,schemas,check-in-wiring,index}.ts (new), packages/plugin-company/src/server/{router.test,check-in-wiring.test}.ts (new), packages/plugin-company/src/index.ts (modified — re-export not added; server surface intentionally lives behind `/server/index.js` to keep the main entry free of express/zod), packages/plugin-company/package.json (modified — version 0.4.0 → 0.5.0, deps add: express, zod, supertest, @types/express, @types/supertest), packages/plugin-company/vitest.config.ts (modified — testTimeout 5s → 20s for embedded-postgres setup cost), server/package.json (modified — added @paperclipai/plugin-company workspace dep), server/src/routes/plugin-company.ts (new — thin re-export through authz), server/src/app.ts (modified — one-line route mount + boot-time check-in poster install per company), pnpm-lock.yaml, .agents/company-dev/checks/gate-A-06.5.sh (new).
+
+**Tests:** router.test.ts (17) + check-in-wiring.test.ts (11) — 28 total, all green:
+- checklist: GET initial state, POST complete-step success/400/400-bad-uuid/403-from-authz
+- review queue: GET pending, POST approve flips issue to done, POST reject flips back to todo, double-decide → 409, agent-attributed decision, strict zod 400 on unknown body fields
+- CompanyProfile CRUD: GET 404 → PUT create → GET 200 → PATCH update → DELETE 204 → GET 404 round-trip, PUT idempotency (no row duplication), PATCH empty body → 400, PUT trialState enum validation, DELETE-of-nothing → 404
+- categorizeLiveEvent: rejects non-heartbeat / no-runId / non-lifecycle, classifies recovered+detached → error_recovery, restarted+process_lost → restart, retry/retried → retry, structured payload.eventType="checkin" honoured, unknown structured kind → null
+- installCheckInPosterForCompany: heartbeat lifecycle live-event → "via check-in" comment posted to the run's chat issue; non-matching events ignored; dispose() unsubscribes
+
+**Gate output (tail):**
+```
+ ✓ src/server/check-in-wiring.test.ts (11 tests) 19589ms
+ ✓ src/server/router.test.ts (17 tests) 116766ms
+ Test Files  2 passed (2)
+      Tests  28 passed (28)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-06.5: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass.
+- `pnpm test:run`: **277 files / 1600 pass, 1 skipped, 0 failed**. None of the 5 known env-flakes hit on this quiesced run.
+
+**Design decisions:**
+1. **Plugin-company ships its own express router; host injects authz.** `createPluginCompanyRouter({ db, authorizeCompanyAccess, resolveActorInfo })` lets the plugin define routes + zod validation while staying decoupled from `server/src/routes/authz.ts`. The thin server module (`server/src/routes/plugin-company.ts`) closes over the host's `assertCompanyAccess` + `getActorInfo` and forwards them in. Adding a new plugin-company route means editing one file inside the package — no server change required.
+2. **`/plugin-company/...` URL prefix.** Avoids any future collision with core `/companies/:companyId/...` resources Paperclip might add upstream. Aligns with the architecture doc's "plugins live under their own namespace" rule.
+3. **Strict zod schemas.** Bodies are `.strict()` — unknown fields produce a 400. Path params are uuid-validated. The `decideReviewBodySchema` accepts only `decisionNote` (≤2000 chars). The PATCH profile schema requires at least one field via `.refine(...)`.
+4. **Server surface lives under `./server/*`.** The package's main entry (`./src/index.ts`) intentionally does NOT re-export the router or the wiring — that would pull express + zod into anything that imports `@paperclipai/plugin-company` (the CLI, future workers, etc.). Hosts import the server surface explicitly via `@paperclipai/plugin-company/server/index`.
+5. **Check-in wiring is structural, not nominal.** `categorizeLiveEvent` recognises the actual lifecycle messages emitted by `server/src/services/heartbeat.ts` (the "Detached child process… cleared detached warning" message, the "Run ended without an issue comment… queued one follow-up wake" retry message, etc.) by case-insensitive substring match. ALSO accepts a structured `payload.eventType="checkin"` form for any future emitter that wants to opt out of the heuristic. The test suite locks both shapes.
+6. **Boot-time install loop is per-existing-company.** `app.ts` queries `companies` on startup and installs one subscription per row. Each `installCheckInPosterForCompany` returns a dispose handle, which app.ts collects and tears down on `process.exit`. **Known gap:** new companies created at runtime are not auto-wired. Documented and flagged in `questions/orchestrator.md`. The proper fix is a global live-events subscribe API or a `company.created` plugin event hook — both are core surface area and need orchestrator design input.
+7. **vitest testTimeout 5s → 20s.** Each route test calls `buildApp()` which starts a fresh embedded-postgres + applies all migrations, costing ~3-5s before any assertion runs. The default 5s flaked one of the 28 tests on the first wallclock-warm run. Bumping the per-package timeout is the smallest possible fix; it doesn't slow down passing tests, just gives the slow ones more headroom.
+
+**Notes for next task (A-07):** Credit ledger. `credit_ledger` table is owned by plugin-payments per ARCHITECTURE.md, not plugin-company. PLAN.md A-07 reads "credit ledger" — need to clarify with orchestrator whether A-07 is the schema bootstrap inside plugin-payments (in which case it's actually a B-task or a new plugin-payments scaffold), or whether plugin-company gains a credits-readonly surface for the dashboard. Will ask before starting.
+
+---
+
 ## A-06 · 2026-04-17 05:42 · agent-A
 **Commit:** 40ff1adb on `feat/backend-wiring` (pushed to origin, force-with-lease after rebase onto master)
 **Files:** packages/plugin-company/src/heartbeat/check-in-poster.ts (new), packages/plugin-company/src/heartbeat/check-in-poster.test.ts (new), packages/plugin-company/src/index.ts (modified — re-exports new module), packages/plugin-company/package.json (modified — version 0.3.1 → 0.4.0), .agents/company-dev/checks/gate-A-06.sh (new).

@@ -35,6 +35,6 @@ export interface CompanyPluginRegistration {
 export function registerPlugin(): CompanyPluginRegistration {
   return {
     name: "plugin-company",
-    version: "0.4.0",
+    version: "0.5.0",
   };
 }
