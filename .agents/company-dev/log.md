@@ -972,3 +972,54 @@ Tasks tests cover: 4-column render, header (filter tabs + New Task), the "stub �
 - **C-07 (Drive view)** depends on B-02 which is also merged — could also be picked up.
 
 **P2 tech debt unchanged:** vite main-chunk 3.3 MB warning. C-14 still on the slot list.
+
+---
+
+## C-10 · 2026-04-18 00:05 · agent-C
+**Commit:** d4556c9a on `feat/frontend-port` (pushed; rebased onto latest origin/master)
+**Files:** `ui/src/api/plugin-apps-builder.ts` (new — typed client for B-02 + B-03 routes); `ui/src/copy/app-detail.ts` (new); `ui/src/pages/app-detail/AppDetail.tsx` (new — 4 tabs inline, recursive file-tree component); `ui/src/pages/app-detail/AppDetail.test.tsx` (new — 11 tests); `ui/src/pages/CompanyShell.tsx` (route + breadcrumb hide + AppsSection rows now navigate); `ui/src/pages/CompanyShell.test.tsx` (useParams mock extended for appId + 2 new C-10 assertions); `ui/src/lib/queryKeys.ts` (6 new pluginAppsBuilder keys); `.agents/company-dev/checks/gate-C-10.sh`.
+
+**Gate:** 33/33 pass. All 4 tabs live-wired: Preview (iframe to productionDomain), Code (file tree via useQuery), Deployments (chronological list with status pills), Settings (PATCH add + DELETE with invalidation + inline UPPER_SNAKE_CASE validation). Not-found state renders when GET /apps/:appId returns 404.
+
+**Key design decisions:**
+1. Recursive file-tree component with per-directory collapsible state (root auto-expanded, children click-to-toggle).
+2. Env-var editor validates client-side before any network call — invalid keys never fire PATCH.
+3. AppsSection sidebar rows promoted from static `<a>` to real navigating buttons (was C-03 decoration).
+4. React controlled-input test helper: the native setter trick via `Object.getOwnPropertyDescriptor(proto, "value").set` — needed because setting `.value` directly bypasses React's value-tracker. Worth carrying forward as a project pattern.
+
+---
+
+## C-11 · 2026-04-18 00:12 · agent-C
+**Commit:** e0b80c17 on `feat/frontend-port` (pushed)
+**Files:** `ui/src/api/plugin-payments.ts` (new — typed client for B-07); `ui/src/copy/payments.ts` (new); `ui/src/pages/payments/Upgrade.tsx` (new); `ui/src/pages/payments/TopUpModal.tsx` (new); `ui/src/pages/payments/Upgrade.test.tsx` (new — 5 tests); `ui/src/pages/CompanyShell.tsx` (route, breadcrumb hide, TopUpModal mounted at shell so any surface opens it, UserMenu Upgrade/TopUp items + trial banner Subscribe now wired, sidebar footer learned `companyId` + `onTopUp`); `ui/src/pages/CompanyShell.test.tsx` (fetch mock extended to return empty catalog / null subscription for any route that mounts /upgrade; 3 new C-11 assertions); `ui/src/lib/queryKeys.ts` (pluginPayments entries); `.agents/company-dev/checks/gate-C-11.sh`.
+
+**Gate:** 30/30 pass (5 Upgrade tests + 25 shell tests). C-11 gate behavior verified end-to-end against the live B-07 endpoints: Subscribe on Starter → POST /checkout/subscription → `window.location.href` set to Stripe URL. Top-up modal option select + Purchase Credits → POST /checkout/top-up → redirect.
+
+**Key design decisions:**
+1. `CheckoutSessionLite` shim — the UI only needs `url` from the Stripe SDK's `Checkout.Session`, so we skip importing the Stripe types into the UI bundle.
+2. Not-configured plans render disabled with the env var name in a tooltip-ish note, so operators can debug without reading code.
+3. TopUpModal is shell-mounted rather than page-mounted so the UserMenu can open it without re-routing.
+4. window.location.href stub pattern for jsdom — `Object.defineProperty(window, "location", {...})` with a getter/setter so redirect is observable and jsdom doesn't try to actually navigate.
+
+---
+
+## C-07 · 2026-04-18 00:50 · agent-C
+**Commit:** 190b0824 on `feat/frontend-port` (pushed)
+**Files:** `ui/src/copy/drive.ts` (new); `ui/src/hooks/useDriveData.ts` (new — 5-dept filter state + typed mock shaped as the future plugin-drive wire); `ui/src/pages/Drive.tsx` (new); `ui/src/pages/Drive.test.tsx` (new — 6 tests); `ui/src/pages/CompanyShell.tsx` (route, breadcrumb hide, sidebar Drive wired to navigate); `ui/src/pages/CompanyShell.test.tsx` (2 new C-07 assertions); `.agents/company-dev/checks/gate-C-07.sh`.
+
+**Gate:** 33/33 pass. Departments + Pending tab correctly filter the mock file list; pending rows carry the Pending Review badge; empty state renders when no files match.
+
+**Note on HTTP wiring (flagged for orchestrator):** plugin-drive has no HTTP route on master. Paperclip ships per-issue documents and per-app files (B-03) but no cross-issue / by-department aggregation. The UI today reads `MOCK_FILES` inside `useDriveData` with a clear swap marker; suggest an A-task (possibly A-09?) to expose `GET /companies/:companyId/plugin-drive/files?department=...&status=pending_review` so the view goes live with no component change.
+
+---
+
+## Combined full-repo verification (C-10 + C-11 + C-07)
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: **306/309 files pass, 1899/1903 tests pass, 2 skipped.** 3 failing suites, all env-flake timeout patterns we've seen across the session: `company-import-export-e2e` (CLI spawn), `server/__tests__/assets.test.ts`, `company-portability-routes.test.ts`. None are in UI code; none are regressions from C-07/C-10/C-11. 152s total (much faster than the 400s runs from earlier in the week — the env has quiesced).
+
+## Remaining C-work
+- **C-12** (Settings sub-pages — Manage Domains / Virtual Cards / Custom Dashboards / Connections): unblocked (B-13 virtual cards HTTP, B-14 connect-tools, B-15 domains, A-08 dashboards all merged).
+- **C-13** (Playwright E2E harness): scaffolding task.
+- **C-14** (brand swap): the final reskin — tokens + all `*.ts` copy files.
+
+**P2 tech debt unchanged:** vite main-chunk 3.3 MB warning. Slot before C-14 if still in the picture.
