@@ -378,4 +378,53 @@ Test Files  1 passed (1)
 - No reference-brand-name appears anywhere in the shell files; gate-C-03 verifies.
 
 **Notes for next task:** C-04 (Company > Chat view) and C-06 (Tasks kanban) are both newly unblocked — C-04 by A-03 (CEO seeded) + A-06 (check-in messages; not yet started per PLAN). C-05 (Overview / Strategy / Payments / Settings tabs) depends on A-02 (merged) + B-08 (not started). C-06 depends on A-05 (not started). Fastest unblocked path for me is probably **C-13 E2E harness scaffold** (tests/e2e-company-dev/, Playwright config, first smoke test that loads `/` or `/c/:companyId` against the dev server) — unblocks the deferred visual-diff pieces in gate-C-01 + gate-C-03 and lays ground for every later gate that needs browser-level verification. Waiting for Orchestrator confirmation per SELF_CHECK rule 11.
+---
+
+## A-05 · 2026-04-17 02:42 · agent-A
+**Commit:** ad90cf19 on `feat/backend-wiring` (pushed to origin; rebased on origin/master containing f4b0ae13 A-04)
+**Files:**
+- `packages/db/src/schema/pending_reviews.ts` (new)
+- `packages/db/src/schema/index.ts` (re-export)
+- `packages/db/src/migrations/0059_sleepy_white_queen.sql` (new)
+- `packages/db/src/migrations/meta/0059_snapshot.json` + `_journal.json`
+- `packages/db/src/rollbacks/0059_sleepy_white_queen.down.sql` (new)
+- `packages/plugin-company/src/reviews/queue.ts` (new — submitForReview, listPendingReviews, approveReview, rejectReview)
+- `packages/plugin-company/src/reviews/queue.test.ts` (new — 6 embedded-postgres round-trip tests)
+- `packages/plugin-company/src/index.ts` (re-exports queue module)
+- `.agents/company-dev/checks/gate-A-05.sh` (new)
+
+**Tests:** `queue.test.ts`:
+- `submitForReview enqueues the review and flips issue status to in_review` (pass, 4.3s)
+- `listPendingReviews returns the submitted review with its underlying issue` (pass, 6.1s)
+- `approveReview removes the review from the queue and marks the issue done` (pass, 5.9s)
+- `rejectReview flips the issue status back to todo and marks review rejected` (pass, 3.8s)
+- `approve and reject both refuse to act on an already-decided review` (pass, 3.4s)
+- `the queue is scoped per company` (pass, 2.8s)
+
+**Gate output (tail):**
+```
+ RUN  v3.2.4 /Users/deusnexus/company-dev-a/packages/plugin-company
+ ✓ src/reviews/queue.test.ts (6 tests) 26338ms
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Duration  34.93s
+▶ gate-A-05: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0).
+- `pnpm test:run`: **264/264 files, 1502/1503 tests pass, 1 skipped, 0 failed**, exit 0. Note: same counts as A-04 — see flagged issue below.
+
+**Design decisions:**
+1. **Reuses Paperclip's existing `issues` table** as the "task" concept. `issues.status` already has an `in_review` value in the Paperclip core; I use it for submit, `done` for approve, `todo` for reject. No schema change needed for tasks themselves.
+2. **Queue semantics = `status='pending'` filter** — `listPendingReviews` is a simple `WHERE status='pending'` on `pending_reviews`. Approval / rejection flips the `status` column, which naturally removes the row from the queue without deleting history. Decision timestamps and notes are retained for audit.
+3. **Foreign-key behaviour** — `company_id` and `issue_id` cascade delete (if the owning company / issue is deleted, the reviews go too). `submitted_by_agent_id` and `decided_by_agent_id` set-null on agent deletion — we want to preserve the review row even if the acting agent is later removed.
+4. **Idempotent decides rejected by design** — `approveReview` / `rejectReview` both include `AND status='pending'` in the WHERE clause, so re-deciding returns no rows and the API throws. Callers don't need to guard against double-click or race conditions.
+5. **Issue status transitions are not configurable yet** — the values `in_review` / `done` / `todo` are hardcoded constants (`ISSUE_STATUS_IN_REVIEW`, `ISSUE_STATUS_APPROVED`, `ISSUE_STATUS_REJECTED`) exported from the module, so callers or tests can reference them. A later task can make these per-company if needed.
+
+**Flagged for orchestrator — `vitest` projects gap.** The root `vitest.config.ts` does not include `packages/plugin-company` in its `projects` list, so the repo-wide `pnpm test:run` actually runs none of my plugin-company tests (A-01..A-05). Per-task gates verify the code via `pnpm --filter` before I commit, so no test gap slipped through, but the repo-wide signal is currently weaker than SELF_CHECK_PROTOCOL rule 4 implies. I did not edit `vitest.config.ts` unilaterally — posted the detail and a proposed one-line fix in `.agents/company-dev/questions/orchestrator.md`. Same gap applies to Agent B's `plugin-apps-builder` and `plugin-store`.
+
+**Notes for next task (A-06):** Heartbeat / check-in system messages — extend Paperclip's run-status stream to emit "via check-in" system posts into the company chat thread on run-lifecycle events (error recovery, restart, retry). Blocked-by: A-03 (merged). This one likely needs to hook into Paperclip's existing `heartbeat_runs` / run lifecycle code; the hard rule is "no core edits", so I'll need to find an existing plugin hook or escalate. Will inspect `server/src/services/heartbeat.ts` and the plugin SDK's event contract before writing code.
+
+
 

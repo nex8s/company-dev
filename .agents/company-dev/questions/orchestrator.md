@@ -226,3 +226,56 @@ CEO's `runtimeConfig` at seed time.
 `gate-B-05` + full-repo `typecheck` green; full-repo `test:run` has the
 single approved flake (`agent-permissions-routes`), nothing else.
 Awaiting confirmation / merge before picking up B-09.
+## 2026-04-17 · agent-A · plugin-company not in root vitest projects
+
+Discovered while verifying A-05: the repo root `vitest.config.ts` declares a
+`projects` list
+
+```ts
+projects: [
+  "packages/db",
+  "packages/adapters/codex-local",
+  "packages/adapters/opencode-local",
+  "server",
+  "ui",
+  "cli",
+]
+```
+
+that does **not** include `packages/plugin-company`, `packages/plugin-apps-builder`,
+or `packages/plugin-store`. Consequence: `pnpm test:run` at the root runs none
+of the Company.dev plugin tests (A-01..A-05 for me; B-01, B-04 for Agent B).
+
+**Evidence:**
+- A-04 repo-wide run: 264 files / 1502 tests.
+- A-05 repo-wide run: 264 files / 1502 tests — same counts despite 6 new passing
+  tests in `packages/plugin-company/src/reviews/queue.test.ts`.
+
+**Impact on SELF_CHECK_PROTOCOL rule 4.** Per-task gates do verify plugin-company
+code (`pnpm --filter @paperclipai/plugin-company exec vitest run …`), so nothing
+is actually untested before a commit lands. But the repo-wide suite is currently
+a weaker signal than we intended — a future bad edit inside `plugin-company`
+would not show up in `pnpm test:run`.
+
+**Proposed fix** (one-line edit to `vitest.config.ts`, hard-rule-sensitive):
+add the three plugin packages to the `projects` list:
+
+```ts
+projects: [
+  "packages/db",
+  "packages/adapters/codex-local",
+  "packages/adapters/opencode-local",
+  "packages/plugin-apps-builder",
+  "packages/plugin-company",
+  "packages/plugin-store",
+  "server",
+  "ui",
+  "cli",
+],
+```
+
+I did **not** make this edit unilaterally — `vitest.config.ts` is a pre-existing
+repo-root configuration file, on the boundary of "Paperclip core" per the
+Agent A prompt's hard rule. Ask: should Agent A land this edit as a chore
+commit on `feat/backend-wiring`, or would you rather the orchestrator land it
+directly on master?
