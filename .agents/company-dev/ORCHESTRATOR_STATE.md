@@ -1,9 +1,9 @@
-# Orchestrator State — 2026-04-17 14:25
+# Orchestrator State — 2026-04-17 15:45
 
 ## Master tip
-`92ba0a7e` on `origin/master`
+`41cf76e3` on `origin/master`
 
-## Merged tasks (19/39 = 49%)
+## Merged tasks (20/39 = 51%)
 
 | ID | Task | Merge commit |
 |---|---|---|
@@ -26,6 +26,7 @@
 | B-10 | BankProvider + MockBankProvider + contract | 92ba0a7e |
 | B-11 | EmailProvider + MockEmailProvider + contract | 92ba0a7e |
 | B-12 | BrowserProvider + MockBrowserProvider + contract | 92ba0a7e |
+| C-06 | Tasks kanban + sidebar wiring (live Needs Review) | 41cf76e3 |
 
 ## Next tasks per agent
 
@@ -42,11 +43,12 @@
 - Bonus: `vitest.config.ts` now includes `plugin-identity` in projects (consistent with prior 164d8e88 pattern)
 - Handoff file: `.agents/company-dev/questions/agent-b.md`
 
-### Agent C — next: C-06 (Tasks kanban) — AUTHORIZED 2026-04-17 14:20
-- Branch: `feat/frontend-port` at 329c3fb5 (merged via 4d7bb086)
-- Status: C-05 done and merged; "Needs Review" column has real A-05 data; other columns stub until A-08
-- Next ranking: C-06 → C-13 (Playwright harness) → C-14 (brand swap)
-- Note: plugin-company HTTP routes now live (A-06.5 merged) — useCompanyShellData / useCompanyTabsData seams can swap typed-mock stubs for real queries at your discretion during or after C-06
+### Agent C — next: C-08 (Store view) OR C-09 (Employees view) — BOTH AUTHORIZED 2026-04-17 15:45
+- Branch: `feat/frontend-port` at 2e28cab6 (merged via 41cf76e3)
+- Status: C-06 done and merged; Needs Review column live against A-06.5 endpoints
+- C-08: Store view — B-04/B-05 merged, install-flow contract exists. Same sidebar-sibling pattern as Tasks.
+- C-09: **now unblocked** — B-10/B-11/B-12 all landed in 92ba0a7e. Employee detail tabs can render against all four MockProvider contracts.
+- Other queued: C-13 (Playwright harness), C-14 (brand swap)
 - Handoff file: `.agents/company-dev/questions/agent-c.md`
 
 ## Known environmental flakes (5 tests)
