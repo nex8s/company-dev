@@ -930,7 +930,6 @@ Tasks tests cover: 4-column render, header (filter tabs + New Task), the "stub �
 - `ui/src/pages/CompanyShell.tsx` (modified — adds /store Route, hides breadcrumb on /store, wires Store sidebar button to navigate, renamed lucide `Store` icon to `StoreIcon` to avoid name clash with the new page export)
 - `ui/src/pages/CompanyShell.test.tsx` (modified — 3 new C-08 assertions)
 - `.agents/company-dev/checks/gate-C-08.sh` (new)
-- `pnpm-lock.yaml` (incidental — `<<<<<<< HEAD` markers cleared by `pnpm install` after rebase)
 
 **Tests:** 8 new Store tests + 3 new CompanyShell tests for C-08 wiring. Gate runs 28/28.
 - Header renders title + subtitle + 4 segment buttons; All is selected by default
