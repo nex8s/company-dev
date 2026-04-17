@@ -8,6 +8,7 @@ export default defineConfig({
       "packages/adapters/opencode-local",
       "packages/plugin-company",
       "packages/plugin-apps-builder",
+      "packages/plugin-payments",
       "packages/plugin-store",
       "packages/plugin-identity",
       "server",

@@ -428,6 +428,13 @@
       "when": 1776382335396,
       "tag": "0060_wise_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1776393600000,
+      "tag": "0061_credit_ledger",
+      "breakpoints": true
     }
   ]
 }
