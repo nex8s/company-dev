@@ -435,6 +435,13 @@
       "when": 1776393600000,
       "tag": "0061_credit_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1776394200000,
+      "tag": "0062_dashboard_pages",
+      "breakpoints": true
     }
   ]
 }
