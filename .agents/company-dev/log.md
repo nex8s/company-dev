@@ -4,6 +4,47 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-08 · 2026-04-17 18:26 · agent-A
+**Commit:** b23fad22 on `feat/backend-wiring` (pushed to origin). Parent commits carry A-06.6 (467a2f5f) + A-07 (5855db23) — still awaiting orchestrator merge.
+**Files:** packages/db/src/schema/dashboard_pages.ts (new), packages/db/src/schema/index.ts (modified — re-export dashboardPages), packages/db/src/migrations/0062_dashboard_pages.sql (new), packages/db/src/rollbacks/0062_dashboard_pages.down.sql (new), packages/db/src/migrations/meta/_journal.json (modified — added idx 62), packages/plugin-dashboards/{package.json, tsconfig.json, vitest.config.ts, src/index.ts, src/schema.ts, src/pages/operations.ts, src/widgets/resolvers.ts, src/server/{router.ts, schemas.ts, index.ts, router.test.ts}} (new package), server/src/routes/plugin-dashboards.ts (new — thin deps-inject mount), server/src/app.ts (modified — one-line mount), server/package.json (modified — added @paperclipai/plugin-dashboards dep), vitest.config.ts (modified — plugin-dashboards added to projects), pnpm-lock.yaml, .agents/company-dev/checks/gate-A-08.sh (new).
+
+**Tests:** 11 supertest-based contract tests, all green:
+- POST create → GET list → GET by id round-trip
+- PATCH updates title and/or layout; empty body → 400
+- DELETE then GET → 204 then 404
+- Strict zod rejects unknown widget type (`explosion-meter`) and unknown body fields
+- 404 on get/patch/delete for unknown pageId
+- 403 propagation from authorizeCompanyAccess
+- GET render returns an envelope per widget with live data for team-status / task-kanban / ai-usage and a stub payload for revenue — asserts total counts, status bucketing, and per-agent usage sums
+- Empty widgets list renders to `[]`
+- GET render → 404 on unknown pageId
+- List is scoped per-company (two companies, independent page counts + DB sanity)
+
+**Gate output (tail):**
+```
+ ✓ src/server/router.test.ts (11 tests) 23855ms
+ Test Files  1 passed (1)   Tests  11 passed (11)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-08: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: server + plugin-dashboards both `Done`. (Full repo not re-run — same env-flake conditions as A-07 still apply; orchestrator verifies on a clean checkout per SELF_CHECK_PROTOCOL step 6.)
+- Gate + typecheck sufficient per the orchestrator's current "push without waiting" cadence for this A-queue.
+
+**Design decisions:**
+1. **Resolvers are data functions, not formatters.** `resolveWidgets` returns raw `{ totalUsageCents, byAgent: [...] }` shapes; it's the UI's job to render. Keeps the server contract stable even if the dashboard UI changes widget chrome.
+2. **Parallel + per-widget error-isolation.** `Promise.all` over resolvers, each wrapped in a `.catch` that emits `{ id, type, data: null, error: msg }`. A failing revenue widget (when Stripe lands) won't black out the whole page.
+3. **`revenue` is explicitly stubbed.** Returns `{ provider: "stripe", status: "stubbed", monthCents: 0, subscriptions: 0, note: "..." }` so the UI can render a "coming soon" card. Swaps to real when B-07 ships.
+4. **`ai-usage` reads `credit_ledger` directly.** The package depends on `@paperclipai/plugin-payments` (workspace:*) but doesn't call its operations — just shares the `credit_ledger` table via the db package. This is deliberate: plugin-dashboards is read-only on payments data, and wiring through plugin-payments' own functions would require exporting a usage-by-agent aggregate there. Keeps plugin-payments' surface focused on writes + caps.
+5. **`layout.widgets` capped at 50.** Strict schema limit prevents a pathological page from OOM'ing the render endpoint. Each widget resolver also caps its own result (task-kanban defaults to 50 issues per column via `limitPerColumn` param).
+6. **Layout JSON is validated on write, not on render.** Zod-strict on create/patch; the render endpoint trusts what's in the DB but defensively does `Array.isArray(layout?.widgets)` before iterating so manually-written bad layouts return an empty list rather than 500.
+7. **Server surface behind `./server/*`.** Same pattern as plugin-company — main entry is express/zod-free so any future CLI or worker consumer can import schemas + operations without dragging a web server in.
+
+**Notes for next task (A-09):** Company "Server" panel — Fly machine metadata endpoint with local-dev stub. Depends only on A-01. Mechanical: a single GET route that probes a `FLY_APP_NAME` env var, calls the Fly Machines API if present, returns a structured stub otherwise. Won't need a new package — can live in `server/src/routes/server-panel.ts` or inside plugin-company, depending on ownership. PLAN.md is silent on which plugin owns this; will inspect ARCHITECTURE.md before starting.
+
+---
+
 ## A-07 · 2026-04-17 15:42 · agent-A
 **Commit:** 5855db23 on `feat/backend-wiring`. Parent commits also carry A-06.6 (467a2f5f) — still awaiting orchestrator merge.
 **Files:** packages/db/src/schema/credit_ledger.ts (new), packages/db/src/schema/index.ts (modified — re-export creditLedger), packages/db/src/migrations/0061_credit_ledger.sql (new), packages/db/src/rollbacks/0061_credit_ledger.down.sql (new), packages/db/src/migrations/meta/_journal.json (modified — added idx 61), packages/plugin-payments/{package.json, tsconfig.json, vitest.config.ts, src/index.ts, src/schema.ts, src/ledger/operations.ts, src/ledger/operations.test.ts, src/budgets/cap-enforcement.ts, src/budgets/cap-enforcement.test.ts} (new package), vitest.config.ts (modified — plugin-payments added to projects), pnpm-lock.yaml, .agents/company-dev/checks/gate-A-07.sh (new).
