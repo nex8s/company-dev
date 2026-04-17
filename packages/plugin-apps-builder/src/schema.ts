@@ -1,16 +1,15 @@
-import { pgTable, uuid, text, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { apps, appFiles } from "@paperclipai/db";
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-export const apps = pgTable("apps", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyId: uuid("company_id").notNull(),
-  name: text("name").notNull(),
-  channelId: uuid("channel_id"),
-  connections: jsonb("connections").notNull().default([]),
-  envVars: jsonb("env_vars").notNull().default({}),
-  productionDomain: text("production_domain"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type AppRow = typeof apps.$inferSelect;
-export type NewAppRow = typeof apps.$inferInsert;
+/**
+ * Drizzle bindings for B-01 `apps` and B-02 `app_files`. The tables
+ * themselves live in `packages/db` so drizzle-kit's generator can pick
+ * them up (see packages/db/src/schema/apps.ts, /app_files.ts); this file
+ * just re-exports them so plugin-apps-builder consumers keep importing
+ * from `@paperclipai/plugin-apps-builder/schema`.
+ */
+export { apps, appFiles };
+export type AppRow = InferSelectModel<typeof apps>;
+export type NewAppRow = InferInsertModel<typeof apps>;
+export type AppFileRow = InferSelectModel<typeof appFiles>;
+export type NewAppFileRow = InferInsertModel<typeof appFiles>;

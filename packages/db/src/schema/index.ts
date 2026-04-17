@@ -3,6 +3,8 @@ export { companyLogos } from "./company_logos.js";
 export { companyProfiles } from "./company_profiles.js";
 export { connections } from "./connections.js";
 export { domains } from "./domains.js";
+export { apps } from "./apps.js";
+export { appFiles } from "./app_files.js";
 export { gettingStarted, type GettingStartedStepsJson } from "./getting_started.js";
 export { templateInstallations } from "./template_installations.js";
 export { pendingReviews } from "./pending_reviews.js";
