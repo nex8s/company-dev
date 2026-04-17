@@ -319,4 +319,34 @@ describe("CompanyShell (C-03)", () => {
     expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
     expect(container.querySelector('[data-testid="employee-detail"]')).toBeTruthy();
   });
+
+  it("navigates the sidebar Store nav button to /c/:companyId/store (C-08)", () => {
+    root = renderShell(container);
+    const storeBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Store"]',
+    );
+    expect(storeBtn).toBeTruthy();
+    clickElement(storeBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/store");
+  });
+
+  it("hides the breadcrumb and renders Store at /c/:companyId/store (C-08)", () => {
+    mockLocation.pathname = "/c/company-x/store";
+    root = renderShell(container, "/c/company-x/store");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="store-view"]')).toBeTruthy();
+  });
+
+  it("marks the sidebar Store button active and Company inactive when on /store (C-08)", () => {
+    mockLocation.pathname = "/c/company-x/store";
+    root = renderShell(container, "/c/company-x/store");
+    const storeBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Store"]',
+    );
+    const companyBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Company"]',
+    );
+    expect(storeBtn?.getAttribute("aria-current")).toBe("page");
+    expect(companyBtn?.getAttribute("aria-current")).toBeNull();
+  });
 });
