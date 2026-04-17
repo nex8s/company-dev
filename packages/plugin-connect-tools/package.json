@@ -1,13 +1,12 @@
 {
-  "name": "@paperclipai/plugin-identity",
+  "name": "@paperclipai/plugin-connect-tools",
   "version": "0.1.0",
-  "description": "Identity plugin — IdentityProvider / BankProvider / EmailProvider / BrowserProvider interfaces + Mock implementations (B-09..B-12)",
+  "description": "Connect-tools plugin (B-14) — pluggable adapter pattern for Notion / Slack / Figma / GitHub / Linear / Vercel connections plus a per-company connections store.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./identity": "./src/identity/index.ts",
     "./server/index": "./src/server/index.ts"
   },
   "scripts": {
