@@ -444,7 +444,6 @@ Test Files  1 passed (1)
 ```
 **Full-repo checks:** `pnpm typecheck` green (exit 0). Full `pnpm test:run` NOT run in this session — user requested stop-for-token-save; the orchestrator will verify on a quiesced checkout.
 
-**Stray conflict marker on master:** `packages/db/src/migrations/meta/0058_snapshot.json` still contains `<<<<<<<` markers after the 09b8b800 master-fix. It doesn't affect TS build or runtime (snapshot JSON is only read by `drizzle-kit generate` at dev time), but the next agent who runs `drizzle-kit generate` will fail. No action taken in B-09 (not my file); flagging for awareness.
 
 **Notes for next task:** B-10/B-11/B-12 follow the same shape — `{Bank,Email,Browser}Provider` interface + `Mock*Provider` + `runXContract` reusable spec + `*.contract.test.ts`. Same package (plugin-identity/src/{bank,email,browser}/), same scaffolding. Should land quickly once resumed. Then C-09 (employee detail tabs) is unblocked.
 
