@@ -5,6 +5,11 @@ import {
   useCompanyTabsData,
   type SettingsGeneralData,
 } from "@/hooks/useCompanyTabsData";
+import { SettingsDomains } from "./settings/Domains";
+import { SettingsConnections } from "./settings/Connections";
+import { SettingsCustomDashboards } from "./settings/CustomDashboards";
+import { SettingsVirtualCards } from "./settings/VirtualCardsAggregate";
+import { SettingsTeam } from "./settings/Team";
 
 /**
  * Company > Settings — C-05 tab 4. An inner tab strip (General / Billing
@@ -51,10 +56,16 @@ export function CompanySettingsTab() {
           <Route index element={<SettingsGeneral />} />
           <Route path="general" element={<SettingsGeneral />} />
           <Route path="billing" element={<SettingsPlaceholder tab="billing" task="B-07" />} />
-          <Route path="team" element={<SettingsPlaceholder tab="team" task="B-06" />} />
+          <Route path="team" element={<SettingsTeam />} />
           <Route path="usage" element={<SettingsPlaceholder tab="usage" task="A-07" />} />
           <Route path="server" element={<SettingsPlaceholder tab="server" task="A-09" />} />
           <Route path="publishing" element={<SettingsPlaceholder tab="publishing" task="B-10" />} />
+          {/* C-12 sub-pages — not part of the inner tab strip, reached
+              from the General quick-nav tiles. */}
+          <Route path="domains" element={<SettingsDomains />} />
+          <Route path="virtual-cards" element={<SettingsVirtualCards />} />
+          <Route path="custom-dashboards" element={<SettingsCustomDashboards />} />
+          <Route path="connections" element={<SettingsConnections />} />
         </Routes>
       </div>
     </main>
@@ -244,19 +255,23 @@ function ToggleRow({
 }
 
 function QuickNavGrid() {
+  const { companyId = "" } = useParams<{ companyId: string }>();
+  const navigate = useNavigate();
   const n = copy.settings.general.quickNav;
   const items = [
-    { icon: <Globe className="size-5" strokeWidth={1.5} />, label: n.domains, desc: n.domainsDesc },
-    { icon: <CreditCard className="size-5" strokeWidth={1.5} />, label: n.virtualCards, desc: n.virtualCardsDesc },
-    { icon: <LayoutGrid className="size-5" strokeWidth={1.5} />, label: n.customDashboards, desc: n.customDashboardsDesc },
-    { icon: <Layers className="size-5" strokeWidth={1.5} />, label: n.connections, desc: n.connectionsDesc },
-  ];
+    { slug: "domains", icon: <Globe className="size-5" strokeWidth={1.5} />, label: n.domains, desc: n.domainsDesc },
+    { slug: "virtual-cards", icon: <CreditCard className="size-5" strokeWidth={1.5} />, label: n.virtualCards, desc: n.virtualCardsDesc },
+    { slug: "custom-dashboards", icon: <LayoutGrid className="size-5" strokeWidth={1.5} />, label: n.customDashboards, desc: n.customDashboardsDesc },
+    { slug: "connections", icon: <Layers className="size-5" strokeWidth={1.5} />, label: n.connections, desc: n.connectionsDesc },
+  ] as const;
   return (
     <section className="grid grid-cols-2 gap-4">
       {items.map((it) => (
         <button
-          key={it.label}
+          key={it.slug}
           type="button"
+          data-testid={`quick-nav-${it.slug}`}
+          onClick={() => navigate(`/c/${companyId}/settings/${it.slug}`)}
           className="bg-white border border-hairline p-4 rounded-xl shadow-sm hover:border-black/20 cursor-pointer flex items-center gap-3 transition-colors group text-left"
         >
           <div className="w-10 h-10 bg-cream rounded-lg border border-hairline flex items-center justify-center text-ink">

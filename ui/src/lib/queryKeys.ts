@@ -164,6 +164,24 @@ export const queryKeys = {
   pluginIdentity: {
     agentCards: (companyId: string, agentId: string) =>
       ["plugin-identity", companyId, "agents", agentId, "cards"] as const,
+    domains: (companyId: string) =>
+      ["plugin-identity", companyId, "domains"] as const,
+  },
+  pluginConnectTools: {
+    adapters: (companyId: string) =>
+      ["plugin-connect-tools", companyId, "adapters"] as const,
+    connections: (companyId: string) =>
+      ["plugin-connect-tools", companyId, "connections"] as const,
+  },
+  pluginDashboards: {
+    pages: (companyId: string) =>
+      ["plugin-dashboards", companyId, "pages"] as const,
+    page: (companyId: string, pageId: string) =>
+      ["plugin-dashboards", companyId, "pages", pageId] as const,
+  },
+  companyAccess: {
+    members: (companyId: string) =>
+      ["company-access", companyId, "members"] as const,
   },
   pluginAppsBuilder: {
     app: (companyId: string, appId: string) =>

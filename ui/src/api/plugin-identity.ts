@@ -57,4 +57,46 @@ export const pluginIdentityApi = {
       `/companies/${companyId}/plugin-identity/agents/${agentId}/cards/${cardId}/freeze`,
       {},
     ),
+
+  // -------------------------------------------------------------------------
+  // B-15 Domains — company-level
+  // -------------------------------------------------------------------------
+
+  listDomains: (companyId: string) =>
+    api.get<{ domains: readonly DomainDto[] }>(
+      `/companies/${companyId}/plugin-identity/domains`,
+    ),
+
+  createDomain: (companyId: string, domain: string) =>
+    api.post<{ domain: DomainDto }>(
+      `/companies/${companyId}/plugin-identity/domains`,
+      { domain },
+    ),
+
+  setDefaultDomain: (companyId: string, domainId: string) =>
+    api.post<{ domain: DomainDto }>(
+      `/companies/${companyId}/plugin-identity/domains/${domainId}/default`,
+      {},
+    ),
+
+  deleteDomain: (companyId: string, domainId: string) =>
+    api.delete<void>(
+      `/companies/${companyId}/plugin-identity/domains/${domainId}`,
+    ),
 };
+
+export interface DomainDnsRecord {
+  readonly host: string;
+  readonly type: string;
+  readonly value: string;
+}
+
+export interface DomainDto {
+  readonly id: string;
+  readonly companyId: string;
+  readonly domain: string;
+  readonly isDefault: boolean;
+  readonly status: string;
+  readonly dnsRecords: readonly DomainDnsRecord[];
+  readonly registeredAt: string;
+}
