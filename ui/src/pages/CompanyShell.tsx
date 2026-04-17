@@ -17,7 +17,7 @@ import {
   PlusCircle,
   Settings,
   SmilePlus,
-  Store,
+  Store as StoreIcon,
   Trello,
   X,
 } from "lucide-react";
@@ -29,6 +29,7 @@ import { CompanyPayments } from "./company-tabs/Payments";
 import { CompanySettingsTab } from "./company-tabs/Settings";
 import { CompanyTasks } from "./company-tabs/Tasks";
 import { EmployeeDetail } from "./employee/EmployeeDetail";
+import { Store } from "./Store";
 import {
   Popover,
   PopoverContent,
@@ -133,6 +134,7 @@ export function CompanyShell() {
           <Route path="settings/*" element={<CompanySettingsTab />} />
           <Route path="tasks" element={<CompanyTasks />} />
           <Route path="team/:agentId/*" element={<EmployeeDetail />} />
+          <Route path="store" element={<Store />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
@@ -280,7 +282,7 @@ function CompanySwitcher({
           onClick={() => navigate(`/c/${active.id}/store`)}
           className="w-full text-left px-3 py-2 text-sm text-mist hover:bg-black/5 rounded-md flex items-center gap-2"
         >
-          <Store className="size-4" />
+          <StoreIcon className="size-4" />
           {copy.companySwitcher.store}
         </button>
       </PopoverContent>
@@ -400,10 +402,11 @@ function SidebarPrimaryNav({ companyId }: { companyId: string }) {
   const navigate = useNavigate();
   const path = location.pathname;
   // "Company" lights up for any /c/:companyId/* path that is NOT a sibling
-  // top-level view (Tasks today; Drive / Store later). Tasks lights up only
-  // when on /c/:companyId/tasks.
+  // top-level view (Tasks, Store today; Drive later). Tasks / Store light
+  // up only when on their specific path.
   const onTasks = path === `/c/${companyId}/tasks`;
-  const onCompany = !onTasks;
+  const onStore = path === `/c/${companyId}/store`;
+  const onCompany = !onTasks && !onStore;
 
   return (
     <>
@@ -430,8 +433,10 @@ function SidebarPrimaryNav({ companyId }: { companyId: string }) {
         label={copy.nav.drive}
       />
       <SidebarNavItem
-        icon={<Store className="text-lg" strokeWidth={1.5} />}
+        icon={<StoreIcon className="text-lg" strokeWidth={1.5} />}
         label={copy.nav.store}
+        active={onStore}
+        onClick={() => navigate(`/c/${companyId}/store`)}
       />
     </>
   );
@@ -788,9 +793,11 @@ function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
   const location = useLocation();
   const path = location.pathname;
   // Sibling views render their own header chrome — the company-sub-tab
-  // breadcrumb doesn't apply. Tasks (C-06) and Employee Detail (C-09).
+  // breadcrumb doesn't apply. Tasks (C-06), Employee Detail (C-09),
+  // Store (C-08).
   const isSiblingView =
     path === `/c/${companyId}/tasks` ||
+    path === `/c/${companyId}/store` ||
     path.startsWith(`/c/${companyId}/team/`);
   if (isSiblingView) return null;
   return <CompanyBreadcrumb companyId={companyId} />;
