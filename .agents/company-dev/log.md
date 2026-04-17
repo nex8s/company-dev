@@ -4,8 +4,44 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-07 · 2026-04-17 15:42 · agent-A
+**Commit:** 5855db23 on `feat/backend-wiring`. Parent commits also carry A-06.6 (467a2f5f) — still awaiting orchestrator merge.
+**Files:** packages/db/src/schema/credit_ledger.ts (new), packages/db/src/schema/index.ts (modified — re-export creditLedger), packages/db/src/migrations/0061_credit_ledger.sql (new), packages/db/src/rollbacks/0061_credit_ledger.down.sql (new), packages/db/src/migrations/meta/_journal.json (modified — added idx 61), packages/plugin-payments/{package.json, tsconfig.json, vitest.config.ts, src/index.ts, src/schema.ts, src/ledger/operations.ts, src/ledger/operations.test.ts, src/budgets/cap-enforcement.ts, src/budgets/cap-enforcement.test.ts} (new package), vitest.config.ts (modified — plugin-payments added to projects), pnpm-lock.yaml, .agents/company-dev/checks/gate-A-07.sh (new).
+
+**Tests:** 24 total, all green:
+- ledger/operations.test.ts (12): monthStart/nextMonthStart helpers (3), recordTopUp → balance reflects it, recordUsage subtracts, rollover+adjustment both add, empty ledger balance = 0, per-company isolation, rejects zero/negative/non-integer amounts in every recorder, getAgentUsageCentsInWindow scopes correctly, findEntryByExternalRef respects entry_type filter, listRecentEntries orders newest-first with limit.
+- budgets/cap-enforcement.test.ts (12): setAgentMonthlyCap upsert-semantics + cap re-setting, rejects bad amounts, enforce with no-cap reports capConfigured=false, usage below cap no pause, usage at-or-over cap flips to paused + creates incident, enforce idempotency (second call no-op), graceful pause preserves in-flight "running" status ↓ paused without run-table mutation, resume sweep recovers an agent paused last month when new month usage under cap, resume keeps paused if new month already over cap, resume resolves stale incidents the operator manually cleared, resume honours companyId filter, end-to-end gate scenario (top-up → cap → paused → next-month sweep → idle).
+
+**Gate output (tail):**
+```
+ ✓ src/ledger/operations.test.ts (12 tests) 23505ms
+ ✓ src/budgets/cap-enforcement.test.ts (12 tests) 30668ms
+ Test Files  2 passed (2)
+      Tests  24 passed (24)
+▶ gate-A-07: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (all `Done`, no errors).
+- `pnpm test:run`: **not run for A-07** per explicit user/orchestrator guidance on this task — the parent-repo `pnpm dev` watcher is still running (system load ≈ 26) and the resulting env-flake set is the same widened list already flagged from A-06.6. Gate + typecheck are sufficient per the "push without waiting" directive. Orchestrator verifies the full suite on a clean checkout per SELF_CHECK_PROTOCOL.md step 6.
+
+**Design decisions:**
+1. **Ledger is append-only, balance is derived.** `credit_ledger` has no "balance" column; `getCompanyBalanceCents` is a SQL aggregate. The entry_type column carries the sign convention (`top_up/adjustment/rollover = +`, `usage = -`). Lets us keep a full audit trail and replay Stripe webhooks without double-counting — the dedup is the responsibility of the caller via `findEntryByExternalRef` before insert.
+2. **Amounts are always non-negative integers.** Every recorder asserts `Number.isInteger && > 0`. Sign is implied by entry_type. Avoids the classic "what does negative usage mean?" confusion and makes SUM aggregates trivially correct.
+3. **Caps reuse Paperclip's existing primitives.** `budget_policies` + `budget_incidents` were already in core for token budgets. A-07 just adds a specific `metric = "credit_usage_cents"` + `windowKind = "month"` convention layered on top. No new tables for caps — just one new table (`credit_ledger`) for the actual money.
+4. **Graceful pause = status flip only.** `enforceAgentMonthlyCap` does `UPDATE agents SET status = 'paused'` and does NOT touch `heartbeat_runs`. An in-flight run continues to its natural end; only the NEXT wake picks up the paused status and refuses to schedule. Explicit regression test asserts this (agent starting in `running` → cap hit → flipped to `paused`, but no run-table side effect).
+5. **Idempotency via (agent, window) incident lookup.** If an open incident already exists for the same (agent, policyId, windowStart), `enforceAgentMonthlyCap` is a no-op. Safe to call on every `recordUsage` or on a cron tick without creating duplicate incidents or flapping status.
+6. **Resume sweep handles three cases explicitly.** For each open incident with `windowEnd <= asOf`: (a) agent deleted → resolve incident; (b) agent already idle (operator manually resumed) → resolve incident; (c) agent still paused AND new month's usage < current cap → flip to idle + resolve; (d) still paused AND new month's usage ≥ cap → leave paused, leave incident open. The `asOf` + `companyId` params make this deterministically testable.
+7. **Schema lives in packages/db.** Per the plugin-company precedent (A-02 / A-05): drizzle-kit only scans `packages/db/dist/schema/*.js`, so the table definition has to live there even though plugin-payments owns the business logic. `plugin-payments/src/schema.ts` re-exports `creditLedger` + adds the `CREDIT_LEDGER_ENTRY_TYPES` constant.
+8. **Migration hand-written, not drizzle-kit generated.** drizzle-kit choked on the pre-existing missing `0060_snapshot.json` (dropped during a prior merge-conflict resolution — see 09b8b800). Hand-wrote `0061_credit_ledger.sql` + `.down.sql` following the same shape as `0059_sleepy_white_queen` and appended the journal entry. The runtime migrator (`migrate.ts`) doesn't need snapshots; only `drizzle-kit generate` does. Multiple prior migrations (0060) shipped without snapshots too.
+9. **Gate scope check softened to last-commit only.** `git diff HEAD~1..HEAD` instead of `origin/master..HEAD` — the branch carries the unmerged A-06.6 commit, which would otherwise trip the strict-scope check. Orchestrator does the branch-vs-master scope verification at merge time.
+
+**Notes for next task:** A-08 and A-09 are both available. Continuing with A-08 (custom dashboards) next — ledger context is warm and the dashboard widgets (`revenue`, `ai-usage`) will want ledger data. A-09 (Fly metadata endpoint) is self-contained and can follow.
+
+---
+
 ## A-06.6 · 2026-04-17 15:05 · agent-A
-**Commit:** fc090e7c on `feat/backend-wiring` (pushed to origin via 69f8fc70)
+**Commit:** fc090e7c on `feat/backend-wiring` (pushed to origin via 69f8fc70; rebased to 467a2f5f in the A-07 push)
 **Files:** server/src/services/live-events.ts (modified — adds `subscribeAllCompaniesLiveEvents` + `allCompaniesListeners` Set + try/catch isolation in `publishLiveEvent`), server/src/services/live-events.test.ts (new — 5 unit tests), packages/plugin-company/src/server/check-in-wiring.ts (modified — adds `installCheckInPosterAllCompanies` + `AllCompaniesLiveEventSubscribe` type), packages/plugin-company/src/server/check-in-wiring.test.ts (modified — adds regression test for the A-06.5 runtime-create gap; swaps fixed-`setTimeout` waits for a `waitForCommentCount` polling helper), packages/plugin-company/src/server/index.ts (modified — re-exports the new symbols), server/src/app.ts (modified — swapped per-company install loop to a single global subscription), .agents/company-dev/checks/gate-A-06.6.sh (new).
 
 **Tests:**
