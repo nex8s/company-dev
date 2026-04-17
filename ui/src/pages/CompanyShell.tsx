@@ -34,6 +34,7 @@ import { Store } from "./Store";
 import { AppDetail } from "./app-detail/AppDetail";
 import { Upgrade } from "./payments/Upgrade";
 import { TopUpModal } from "./payments/TopUpModal";
+import { Drive } from "./Drive";
 import {
   Popover,
   PopoverContent,
@@ -139,6 +140,7 @@ export function CompanyShell() {
           <Route path="store" element={<Store />} />
           <Route path="apps/:appId/*" element={<AppDetail />} />
           <Route path="upgrade" element={<Upgrade />} />
+          <Route path="drive" element={<Drive />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
@@ -422,11 +424,11 @@ function SidebarPrimaryNav({ companyId }: { companyId: string }) {
   const navigate = useNavigate();
   const path = location.pathname;
   // "Company" lights up for any /c/:companyId/* path that is NOT a sibling
-  // top-level view (Tasks, Store today; Drive later). Tasks / Store light
-  // up only when on their specific path.
+  // top-level view. Each sibling button lights up only on its own path.
   const onTasks = path === `/c/${companyId}/tasks`;
   const onStore = path === `/c/${companyId}/store`;
-  const onCompany = !onTasks && !onStore;
+  const onDrive = path === `/c/${companyId}/drive`;
+  const onCompany = !onTasks && !onStore && !onDrive;
 
   return (
     <>
@@ -451,6 +453,8 @@ function SidebarPrimaryNav({ companyId }: { companyId: string }) {
       <SidebarNavItem
         icon={<Database className="text-lg" strokeWidth={1.5} />}
         label={copy.nav.drive}
+        active={onDrive}
+        onClick={() => navigate(`/c/${companyId}/drive`)}
       />
       <SidebarNavItem
         icon={<StoreIcon className="text-lg" strokeWidth={1.5} />}
@@ -847,11 +851,12 @@ function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
   const path = location.pathname;
   // Sibling views render their own header chrome — the company-sub-tab
   // breadcrumb doesn't apply. Tasks (C-06), Employee Detail (C-09),
-  // Store (C-08), App Detail (C-10), Upgrade (C-11).
+  // Store (C-08), App Detail (C-10), Upgrade (C-11), Drive (C-07).
   const isSiblingView =
     path === `/c/${companyId}/tasks` ||
     path === `/c/${companyId}/store` ||
     path === `/c/${companyId}/upgrade` ||
+    path === `/c/${companyId}/drive` ||
     path.startsWith(`/c/${companyId}/team/`) ||
     path.startsWith(`/c/${companyId}/apps/`);
   if (isSiblingView) return null;

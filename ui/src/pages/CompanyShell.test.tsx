@@ -413,4 +413,21 @@ describe("CompanyShell (C-03)", () => {
     expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
     expect(container.querySelector('[data-testid="upgrade-view"]')).toBeTruthy();
   });
+
+  it("navigates the sidebar Drive nav button to /c/:companyId/drive (C-07)", () => {
+    root = renderShell(container);
+    const driveBtn = container.querySelector(
+      '[data-testid="company-sidebar"] [data-nav-item="Drive"]',
+    );
+    expect(driveBtn).toBeTruthy();
+    clickElement(driveBtn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/drive");
+  });
+
+  it("hides the breadcrumb and renders Drive at /c/:companyId/drive (C-07)", () => {
+    mockLocation.pathname = "/c/company-x/drive";
+    root = renderShell(container, "/c/company-x/drive");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="drive-view"]')).toBeTruthy();
+  });
 });
