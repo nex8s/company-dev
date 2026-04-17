@@ -1,9 +1,9 @@
-# Orchestrator State — 2026-04-17 14:20
+# Orchestrator State — 2026-04-17 14:25
 
 ## Master tip
-`4d7bb086` on `origin/master`
+`92ba0a7e` on `origin/master`
 
-## Merged tasks (16/39 = 41%)
+## Merged tasks (19/39 = 49%)
 
 | ID | Task | Merge commit |
 |---|---|---|
@@ -23,6 +23,9 @@
 | A-06 | heartbeat check-in poster (plugin-company) | 81298947 |
 | A-06.5 | plugin-company HTTP routes + check-in wiring | 584e0359 |
 | C-05 | Overview/Strategy/Payments/Settings tabs | 4d7bb086 |
+| B-10 | BankProvider + MockBankProvider + contract | 92ba0a7e |
+| B-11 | EmailProvider + MockEmailProvider + contract | 92ba0a7e |
+| B-12 | BrowserProvider + MockBrowserProvider + contract | 92ba0a7e |
 
 ## Next tasks per agent
 
@@ -32,10 +35,11 @@
 - Unblocks (still): Agent C's C-05 already unblocked by A-06.5 — HTTP routes live and mounted at `/api/companies/:companyId/plugin-company/*`.
 - Handoff file: `.agents/company-dev/questions/agent-a.md`
 
-### Agent B — next: B-10 (BankProvider + Mock)
-- Branch: `feat/new-features` at 1ae0f49f
-- Status: B-09 done and merged, B-10 next, then B-11, B-12
-- Note: stray conflict marker in `packages/db/src/migrations/meta/0058_snapshot.json` (non-blocking for B-10–B-12)
+### Agent B — next: B-13 (Virtual Cards UI backend) — AUTHORIZED 2026-04-17 14:25
+- Branch: `feat/new-features` at 6bcbc59b (merged via 92ba0a7e)
+- Status: B-10/B-11/B-12 all done and merged in one group
+- Next ranking: B-13 → B-14 (Connect-tools scaffold) → B-15 (Domains mgmt). B-06 blocked on A-10; B-07 on A-07; B-08 on B-07+A-07+A-09.
+- Bonus: `vitest.config.ts` now includes `plugin-identity` in projects (consistent with prior 164d8e88 pattern)
 - Handoff file: `.agents/company-dev/questions/agent-b.md`
 
 ### Agent C — next: C-06 (Tasks kanban) — AUTHORIZED 2026-04-17 14:20
