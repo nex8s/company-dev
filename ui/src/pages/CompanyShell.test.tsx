@@ -95,15 +95,29 @@ describe("CompanyShell (C-03)", () => {
     mockLocation.pathname = "/c/company-x";
     container = document.createElement("div");
     document.body.appendChild(container);
-    // The /tasks route inside the shell hits A-06.5's HTTP endpoint — stub
-    // fetch with an empty list so that mount path doesn't blow up. Tests
-    // that don't load /tasks ignore the mock entirely.
-    globalThis.fetch = vi.fn(async () =>
-      new Response(JSON.stringify({ reviews: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    ) as unknown as typeof fetch;
+    // Several routes mounted under the shell hit live HTTP endpoints
+    // (A-06.5 reviews, B-07 catalog/subscription). Return safe-empty
+    // responses so any of those mount paths don't blow up. Tests that
+    // care about the request shape supply their own fetch mock.
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/plugin-payments/catalog")) {
+        return new Response(
+          JSON.stringify({ plans: [], topUps: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/plugin-payments/subscription")) {
+        return new Response(
+          JSON.stringify({ subscription: null }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ reviews: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -376,5 +390,27 @@ describe("CompanyShell (C-03)", () => {
       container.querySelector('[data-testid="app-detail-error"]') ??
       container.querySelector('[data-testid="app-detail-not-found"]');
     expect(mounted).toBeTruthy();
+  });
+
+  it("trial subscribe link navigates to /upgrade (C-11)", () => {
+    root = renderShell(container);
+    clickElement(container.querySelector('[data-testid="trial-subscribe-link"]')!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/upgrade");
+  });
+
+  it("UserMenu Upgrade Plan item navigates to /upgrade (C-11)", () => {
+    root = renderShell(container);
+    clickElement(container.querySelector('[aria-label="User menu"]')!);
+    const upgrade = document.body.querySelector('[data-testid="usermenu-upgrade"]');
+    expect(upgrade).toBeTruthy();
+    clickElement(upgrade!);
+    expect(mockNavigate).toHaveBeenCalledWith("/c/company-x/upgrade");
+  });
+
+  it("hides the breadcrumb and renders Upgrade at /c/:companyId/upgrade (C-11)", () => {
+    mockLocation.pathname = "/c/company-x/upgrade";
+    root = renderShell(container, "/c/company-x/upgrade");
+    expect(container.querySelector('[data-testid="company-breadcrumb"]')).toBeNull();
+    expect(container.querySelector('[data-testid="upgrade-view"]')).toBeTruthy();
   });
 });

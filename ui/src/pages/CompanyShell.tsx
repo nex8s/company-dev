@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import { useState } from "react";
 import {
   ArrowUpRight,
   Building2,
@@ -31,6 +32,8 @@ import { CompanyTasks } from "./company-tabs/Tasks";
 import { EmployeeDetail } from "./employee/EmployeeDetail";
 import { Store } from "./Store";
 import { AppDetail } from "./app-detail/AppDetail";
+import { Upgrade } from "./payments/Upgrade";
+import { TopUpModal } from "./payments/TopUpModal";
 import {
   Popover,
   PopoverContent,
@@ -103,6 +106,7 @@ function activeTabFromPath(pathname: string, companyId: string): CompanyTabId {
 export function CompanyShell() {
   const { companyId = "" } = useParams<{ companyId: string }>();
   const data = useCompanyShellData(companyId);
+  const [topUpOpen, setTopUpOpen] = useState(false);
 
   if (data.isLoading) {
     return <CompanyShellSkeleton />;
@@ -116,18 +120,15 @@ export function CompanyShell() {
       data-testid="company-shell"
       className="flex h-screen w-full bg-white overflow-hidden"
     >
-      <Sidebar data={data} companyId={companyId} />
+      <Sidebar data={data} companyId={companyId} onTopUp={() => setTopUpOpen(true)} />
       <div className="flex-1 flex flex-col min-w-0 bg-white">
-        {/* C-06 Tasks is a sibling top-level view (sidebar nav, not the
-            company-sub-tab breadcrumb), so the breadcrumb hides on /tasks
-            to keep the page chrome focused. C-07–C-10 will follow the
-            same pattern as they ship. */}
+        {/* Sibling top-level views render their own header chrome — the
+            company-sub-tab breadcrumb only shows for /chat /overview
+            /strategy /payments /settings. See ShellBreadcrumbSlot. */}
         <ShellBreadcrumbSlot companyId={companyId} />
         <Routes>
-          {/* C-04 Chat is the default view. C-05 filled in Overview /
-              Strategy / Payments / Settings. C-06 added Tasks. Remaining
-              sidebar items (Drive, Store) keep the placeholder until
-              C-07 — C-10. */}
+          {/* C-04 Chat default; C-05 sub-tabs; C-06 Tasks; C-08 Store;
+              C-09 Team; C-10 Apps; C-11 Upgrade. C-07 Drive next. */}
           <Route index element={<CompanyChat />} />
           <Route path="overview" element={<CompanyOverview />} />
           <Route path="strategy" element={<CompanyStrategy />} />
@@ -137,9 +138,16 @@ export function CompanyShell() {
           <Route path="team/:agentId/*" element={<EmployeeDetail />} />
           <Route path="store" element={<Store />} />
           <Route path="apps/:appId/*" element={<AppDetail />} />
+          <Route path="upgrade" element={<Upgrade />} />
           <Route path="*" element={<MainContentPlaceholder companyId={companyId} />} />
         </Routes>
       </div>
+      <TopUpModal
+        open={topUpOpen}
+        onOpenChange={setTopUpOpen}
+        companyId={companyId}
+        currentBalance={data.user.credits}
+      />
     </div>
   );
 }
@@ -179,7 +187,15 @@ function CompanyShellError({ error }: { error: Error }) {
 // Sidebar
 // ---------------------------------------------------------------------------
 
-function Sidebar({ data, companyId }: { data: CompanyShellData; companyId: string }) {
+function Sidebar({
+  data,
+  companyId,
+  onTopUp,
+}: {
+  data: CompanyShellData;
+  companyId: string;
+  onTopUp: () => void;
+}) {
   return (
     <aside
       data-testid="company-sidebar"
@@ -209,6 +225,8 @@ function Sidebar({ data, companyId }: { data: CompanyShellData; companyId: strin
       <SidebarFooter
         trialDaysLeft={data.company.trialDaysLeft}
         user={data.user}
+        companyId={companyId}
+        onTopUp={onTopUp}
       />
     </aside>
   );
@@ -687,10 +705,15 @@ function GettingStartedRow({ step }: { step: CompanyShellChecklistStep }) {
 function SidebarFooter({
   trialDaysLeft,
   user,
+  companyId,
+  onTopUp,
 }: {
   trialDaysLeft: number;
   user: CompanyShellData["user"];
+  companyId: string;
+  onTopUp: () => void;
 }) {
+  const navigate = useNavigate();
   return (
     <div className="p-4 border-t border-hairline bg-cream space-y-3">
       <div className="flex items-center justify-between text-xs px-2">
@@ -698,16 +721,30 @@ function SidebarFooter({
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           {copy.trial.label(trialDaysLeft)}
         </span>
-        <a href="#" className="font-medium hover:underline text-ink">
+        <button
+          type="button"
+          data-testid="trial-subscribe-link"
+          onClick={() => navigate(`/c/${companyId}/upgrade`)}
+          className="font-medium hover:underline text-ink"
+        >
           {copy.trial.subscribe}
-        </a>
+        </button>
       </div>
-      <UserMenu user={user} />
+      <UserMenu user={user} companyId={companyId} onTopUp={onTopUp} />
     </div>
   );
 }
 
-function UserMenu({ user }: { user: CompanyShellData["user"] }) {
+function UserMenu({
+  user,
+  companyId,
+  onTopUp,
+}: {
+  user: CompanyShellData["user"];
+  companyId: string;
+  onTopUp: () => void;
+}) {
+  const navigate = useNavigate();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -742,11 +779,16 @@ function UserMenu({ user }: { user: CompanyShellData["user"] }) {
           </p>
         </div>
         <UserMenuItem
+          data-testid="usermenu-upgrade"
+          onClick={() => navigate(`/c/${companyId}/upgrade`)}
           className="bg-ink text-cream hover:bg-neutral-900 mb-1"
         >
           {copy.userMenu.upgradePlan}
         </UserMenuItem>
-        <UserMenuItem>
+        <UserMenuItem
+          data-testid="usermenu-topup"
+          onClick={onTopUp}
+        >
           <PlusCircle className="size-4 text-mist" />
           {copy.userMenu.topUpCredits}
         </UserMenuItem>
@@ -805,10 +847,11 @@ function ShellBreadcrumbSlot({ companyId }: { companyId: string }) {
   const path = location.pathname;
   // Sibling views render their own header chrome — the company-sub-tab
   // breadcrumb doesn't apply. Tasks (C-06), Employee Detail (C-09),
-  // Store (C-08), App Detail (C-10).
+  // Store (C-08), App Detail (C-10), Upgrade (C-11).
   const isSiblingView =
     path === `/c/${companyId}/tasks` ||
     path === `/c/${companyId}/store` ||
+    path === `/c/${companyId}/upgrade` ||
     path.startsWith(`/c/${companyId}/team/`) ||
     path.startsWith(`/c/${companyId}/apps/`);
   if (isSiblingView) return null;
