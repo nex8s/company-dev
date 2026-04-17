@@ -12,7 +12,9 @@ import {
 } from "@paperclipai/db";
 import {
   categorizeLiveEvent,
+  installCheckInPosterAllCompanies,
   installCheckInPosterForCompany,
+  type AllCompaniesLiveEventSubscribe,
   type HeartbeatLiveEvent,
   type LiveEventSubscribe,
 } from "./check-in-wiring.js";
@@ -38,6 +40,30 @@ async function freshDatabase() {
   cleanups.push(handle.cleanup);
   await applyPendingMigrations(handle.connectionString);
   return createDb(handle.connectionString);
+}
+
+/**
+ * Poll for an exact comment count for a given run. The poster fires from a
+ * detached `void Promise...` chain, so callers can't await the post directly;
+ * polling is more robust than a fixed `setTimeout` under loaded CI parallelism.
+ */
+async function waitForCommentCount(
+  db: Awaited<ReturnType<typeof freshDatabase>>,
+  runId: string,
+  expected: number,
+  timeoutMs = 5_000,
+): Promise<typeof issueComments.$inferSelect[]> {
+  const start = Date.now();
+  let last: typeof issueComments.$inferSelect[] = [];
+  while (Date.now() - start < timeoutMs) {
+    last = await db
+      .select()
+      .from(issueComments)
+      .where(eq(issueComments.createdByRunId, runId));
+    if (last.length >= expected) return last;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return last;
 }
 
 afterEach(async () => {
@@ -210,13 +236,7 @@ describeEmbeddedPostgres("installCheckInPosterForCompany (A-06.5)", () => {
         },
       });
 
-      // Allow the queued microtask in the listener to drain.
-      await new Promise((r) => setTimeout(r, 50));
-
-      const stored = await db
-        .select()
-        .from(issueComments)
-        .where(eq(issueComments.createdByRunId, run!.id));
+      const stored = await waitForCommentCount(db, run!.id, 1);
       expect(stored).toHaveLength(1);
       expect(stored[0]!.body.startsWith(VIA_CHECK_IN_PREFIX)).toBe(true);
       expect(stored[0]!.body).toContain("ADAPTER_TIMEOUT");
@@ -233,12 +253,9 @@ describeEmbeddedPostgres("installCheckInPosterForCompany (A-06.5)", () => {
           message: "another recovered event after dispose",
         },
       });
-      await new Promise((r) => setTimeout(r, 50));
-
-      const after = await db
-        .select()
-        .from(issueComments)
-        .where(eq(issueComments.createdByRunId, run!.id));
+      // Wait long enough that any in-flight post would have landed by now;
+      // assert the count stayed at 1 (i.e. dispose really stopped delivery).
+      const after = await waitForCommentCount(db, run!.id, 2, 500);
       expect(after).toHaveLength(1);
     },
     20_000,
@@ -294,12 +311,116 @@ describeEmbeddedPostgres("installCheckInPosterForCompany (A-06.5)", () => {
           payload: { runId: run!.id, eventType: "lifecycle", message: "Run started" },
         });
 
-      await new Promise((r) => setTimeout(r, 30));
-      const stored = await db
-        .select()
-        .from(issueComments)
-        .where(eq(issueComments.createdByRunId, run!.id));
+      // No matching event published, so wait a bounded interval and assert
+      // nothing was posted.
+      const stored = await waitForCommentCount(db, run!.id, 1, 500);
       expect(stored).toHaveLength(0);
+    },
+    20_000,
+  );
+
+  it(
+    "installCheckInPosterAllCompanies: a single global subscription auto-wires every company including ones created after install",
+    async () => {
+      const db = await freshDatabase();
+
+      // In-memory all-companies emitter — matches the shape of
+      // `subscribeAllCompaniesLiveEvents(listener)` from server live-events.
+      const allListeners = new Set<(e: HeartbeatLiveEvent) => void>();
+      const subscribeAll: AllCompaniesLiveEventSubscribe = (listener) => {
+        allListeners.add(listener);
+        return () => {
+          allListeners.delete(listener);
+        };
+      };
+      function publish(event: HeartbeatLiveEvent) {
+        for (const fn of allListeners) fn(event);
+      }
+
+      const poster = createCheckInPoster({
+        db,
+        resolveIssueIdForRun: (runId, companyId) =>
+          resolveIssueIdForRunByExecution(db, runId, companyId),
+      });
+
+      // Install BEFORE any company exists — the global subscription is
+      // installed once and lasts for the process.
+      const installation = installCheckInPosterAllCompanies({ subscribeAll, poster });
+
+      // Create company A AFTER install. This is the regression test for
+      // the A-06.5 gap (per-company boot loop missed runtime creates).
+      const [companyA] = await db
+        .insert(companies)
+        .values({ name: "Co A", issuePrefix: "ALA" })
+        .returning();
+      const { ceo: ceoA } = await seedCompanyAgents(db, { companyId: companyA!.id });
+      const [issueA] = await db
+        .insert(issues)
+        .values({ companyId: companyA!.id, title: "T", status: "todo" })
+        .returning();
+      const [runA] = await db
+        .insert(heartbeatRuns)
+        .values({ companyId: companyA!.id, agentId: ceoA.id, status: "running" })
+        .returning();
+      await db.update(issues).set({ executionRunId: runA!.id }).where(eq(issues.id, issueA!.id));
+
+      // Create company B too — same global listener should serve both.
+      const [companyB] = await db
+        .insert(companies)
+        .values({ name: "Co B", issuePrefix: "ALB" })
+        .returning();
+      const { ceo: ceoB } = await seedCompanyAgents(db, { companyId: companyB!.id });
+      const [issueB] = await db
+        .insert(issues)
+        .values({ companyId: companyB!.id, title: "T", status: "todo" })
+        .returning();
+      const [runB] = await db
+        .insert(heartbeatRuns)
+        .values({ companyId: companyB!.id, agentId: ceoB.id, status: "running" })
+        .returning();
+      await db.update(issues).set({ executionRunId: runB!.id }).where(eq(issues.id, issueB!.id));
+
+      publish({
+        companyId: companyA!.id,
+        type: "heartbeat.run.event",
+        payload: {
+          runId: runA!.id,
+          eventType: "lifecycle",
+          message: "Adapter recovered after retry",
+          errorCode: "ADAPTER_TIMEOUT",
+        },
+      });
+      publish({
+        companyId: companyB!.id,
+        type: "heartbeat.run.event",
+        payload: {
+          runId: runB!.id,
+          eventType: "lifecycle",
+          message: "process_lost; queued retry",
+        },
+      });
+
+      const storedA = await waitForCommentCount(db, runA!.id, 1);
+      const storedB = await waitForCommentCount(db, runB!.id, 1);
+
+      expect(storedA).toHaveLength(1);
+      expect(storedA[0]!.body).toContain("ADAPTER_TIMEOUT");
+      expect(storedB).toHaveLength(1);
+      expect(storedB[0]!.body).toContain("restart");
+
+      installation.dispose();
+      // Global subscriber gone — no further posts even on a known company.
+      publish({
+        companyId: companyA!.id,
+        type: "heartbeat.run.event",
+        payload: {
+          runId: runA!.id,
+          eventType: "lifecycle",
+          message: "another recovered event after dispose",
+        },
+      });
+      const afterA = await waitForCommentCount(db, runA!.id, 2, 500);
+      expect(afterA).toHaveLength(1);
     },
     20_000,
   );

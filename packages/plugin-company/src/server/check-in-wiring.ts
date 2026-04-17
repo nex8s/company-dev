@@ -137,3 +137,45 @@ function defaultOnError(err: unknown, event: HeartbeatLiveEvent) {
   // eslint-disable-next-line no-console
   console.warn("[plugin-company] check-in poster failed", { err, event });
 }
+
+/**
+ * Subscribe-API for a single process-wide hook on every company's heartbeat
+ * stream. Matches `subscribeAllCompaniesLiveEvents(listener)` from
+ * server/src/services/live-events.ts (introduced in A-06.6).
+ *
+ * This replaces the per-company install loop used in A-06.5 — new companies
+ * created at runtime are now auto-wired without any additional plumbing.
+ */
+export type AllCompaniesLiveEventSubscribe = (
+  listener: (event: HeartbeatLiveEvent) => void,
+) => () => void;
+
+export interface InstallCheckInPosterAllCompaniesDeps {
+  readonly subscribeAll: AllCompaniesLiveEventSubscribe;
+  readonly poster: CheckInPoster;
+  readonly onError?: (err: unknown, event: HeartbeatLiveEvent) => void;
+}
+
+/**
+ * Wire the check-in poster onto every company's heartbeat stream via a single
+ * global subscription. Returns an installation handle whose `dispose()`
+ * removes the listener.
+ */
+export function installCheckInPosterAllCompanies(
+  deps: InstallCheckInPosterAllCompaniesDeps,
+): CheckInPosterInstallation {
+  const onError = deps.onError ?? defaultOnError;
+  const unsubscribe = deps.subscribeAll((event) => {
+    const categorized = categorizeLiveEvent(event);
+    if (!categorized) return;
+    const lifecycleEvent: RunLifecycleEvent = {
+      runId: categorized.runId,
+      companyId: event.companyId,
+      kind: categorized.kind,
+      detail: categorized.detail ?? null,
+      errorCode: categorized.errorCode ?? null,
+    };
+    void deps.poster.postCheckIn(lifecycleEvent).catch((err) => onError(err, event));
+  });
+  return { dispose: unsubscribe };
+}

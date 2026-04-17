@@ -7,6 +7,16 @@ type LiveEventListener = (event: LiveEvent) => void;
 const emitter = new EventEmitter();
 emitter.setMaxListeners(0);
 
+/**
+ * Listeners registered via `subscribeAllCompaniesLiveEvents`. Held outside the
+ * EventEmitter (which keys on event name) so a single subscription receives
+ * every per-company emit without having to know the company set in advance.
+ *
+ * Used by plugin bootstraps that need a process-wide hook on the heartbeat
+ * stream — see plugin-company's `installCheckInPosterAllCompanies`.
+ */
+const allCompaniesListeners = new Set<LiveEventListener>();
+
 let nextEventId = 0;
 
 function toLiveEvent(input: {
@@ -31,6 +41,14 @@ export function publishLiveEvent(input: {
 }) {
   const event = toLiveEvent(input);
   emitter.emit(input.companyId, event);
+  for (const listener of allCompaniesListeners) {
+    try {
+      listener(event);
+    } catch {
+      // Listeners are best-effort; a single broken subscriber must not block
+      // delivery to other subscribers or to the per-company channel above.
+    }
+  }
   return event;
 }
 
@@ -51,4 +69,23 @@ export function subscribeCompanyLiveEvents(companyId: string, listener: LiveEven
 export function subscribeGlobalLiveEvents(listener: LiveEventListener) {
   emitter.on("*", listener);
   return () => emitter.off("*", listener);
+}
+
+/**
+ * Subscribe to every per-company `publishLiveEvent` emission across the
+ * process. Returns an unsubscribe function. Idempotent on the listener
+ * identity — subscribing the same function twice attaches it once.
+ *
+ * Use this for plugin bootstraps that need a process-wide hook (e.g.
+ * plugin-company's check-in poster) so newly created companies are wired
+ * automatically without a per-company install loop.
+ *
+ * Listener errors are caught so a single misbehaving subscriber cannot
+ * break delivery to other subscribers or to per-company channels.
+ */
+export function subscribeAllCompaniesLiveEvents(listener: LiveEventListener) {
+  allCompaniesListeners.add(listener);
+  return () => {
+    allCompaniesListeners.delete(listener);
+  };
 }
