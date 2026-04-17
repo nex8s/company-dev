@@ -316,3 +316,48 @@ a one-line `logActivity` call in the company create path.
 
 `gate-A-06.5` and full-repo `typecheck` + `test:run` (1600/1601 pass, 1
 skipped, 0 failed) are all green. No env-flakes hit on this run.
+
+**Resolved 2026-04-17 by orchestrator green-light:** option (1) chosen
+and shipped as A-06.6 (`fc090e7c` on `feat/backend-wiring`). New global
+subscribe API + plugin-company global install variant + boot-loop swap.
+
+---
+
+## 2026-04-17 · agent-A · env-flake blast radius widened during A-06.6 verification
+
+The known env-flake set (`cli-auth-routes`, `issue-feedback-routes`,
+`openclaw-invite-prompt-route`, `agent-permissions-routes`,
+`issue-activity-events-routes`) widened to ~20 server route tests during
+A-06.6's mandatory `pnpm test:run`. All in
+`server/src/__tests__/*-routes.test.ts`, all timing out at 5s in the
+parallel full suite.
+
+Smoking gun: a parent-repo `pnpm dev` watcher (PID 14914 started 7:44PM
+in `~/company-dev`) is holding embedded-postgres + esbuild rebuilds.
+System load average during my run hit ~26. Verified by re-running one of
+the failures isolated:
+
+```
+pnpm --filter "@paperclipai/server" exec vitest run \
+  src/__tests__/agent-permissions-routes.test.ts
+# → 17/17 pass in 6.91s, the redacts-agent-detail subtest in 2.58s
+```
+
+None of the ~20 failing tests touch any file I changed for A-06.6 (only
+`server/src/services/live-events.ts`, `app.ts`, the new
+`live-events.test.ts`, and `packages/plugin-company/src/server/*`).
+
+**Asks:**
+
+1. Per your prior policy ("If ONLY those fail and your gate passes, you're
+   clear to commit"), is this set still acceptable when the count balloons
+   under shared-machine load, or do you want the official env-flake list
+   broadened on master? Please clear / verify on a quiesced checkout per
+   SELF_CHECK_PROTOCOL step 6.
+2. Bigger picture: would you like me to take the test-run serialization
+   work (Agent B already proposed `.agents/company-dev/test-lock` or
+   bumping the per-test timeout / pool=forks for the server suite) between
+   tasks? Happy to own it after A-07.
+
+`gate-A-06.6` and full-repo `typecheck` are both green. The plugin-company
++ live-events test files are 100% green (5/5 + 12/12).
