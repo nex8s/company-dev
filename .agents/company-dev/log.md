@@ -846,3 +846,60 @@ Tasks tests cover: 4-column render, header (filter tabs + New Task), the "stub �
 **Notes for next task.** C-08 (Store view) remains unblocked. Shape of that task: sidebar-sibling view like Tasks, routed at `/c/:companyId/store`, reads B-04/B-05 store API, supports install flow. Reference prototype line ~1055. The breadcrumb-hide seam already handles `/tasks` and `/team/` — adding `/store` is one line in ShellBreadcrumbSlot + one Route entry + the page itself + one sidebar-nav wire (Store button is still static today).
 
 **P2 tech debt unchanged:** vite main-chunk 3.3 MB warning still present. Slotting before C-14 as discussed.
+
+---
+
+## C-08 · 2026-04-17 23:50 · agent-C
+**Commit:** 74fe7751 on `feat/frontend-port` (pushed to origin; rebased onto latest origin/master to pick up A-07/A-08/B-03/B-07 + the e9c4be6f migration-renumber fix)
+**Files:**
+- `ui/src/api/plugin-store.ts` (new — typed wrapper for the not-yet-mounted plugin-store routes; wire shapes mirror B-04 `StoreTemplateRecord` + B-05 `InstallTemplateResult`)
+- `ui/src/copy/store.ts` (new — page copy + filter-rail category lists)
+- `ui/src/hooks/useStoreData.ts` (new — typed-mock template list + `useMutation` for install with mocked transactional response)
+- `ui/src/pages/Store.tsx` (new — header + segment toggle + filter rail + dark-card grid)
+- `ui/src/pages/Store.test.tsx` (new — 8 tests)
+- `ui/src/pages/CompanyShell.tsx` (modified — adds /store Route, hides breadcrumb on /store, wires Store sidebar button to navigate, renamed lucide `Store` icon to `StoreIcon` to avoid name clash with the new page export)
+- `ui/src/pages/CompanyShell.test.tsx` (modified — 3 new C-08 assertions)
+- `.agents/company-dev/checks/gate-C-08.sh` (new)
+- `pnpm-lock.yaml` (incidental — `<<<<<<< HEAD` markers cleared by `pnpm install` after rebase)
+
+**Tests:** 8 new Store tests + 3 new CompanyShell tests for C-08 wiring. Gate runs 28/28.
+- Header renders title + subtitle + 4 segment buttons; All is selected by default
+- Filter rail renders both Business Categories + Employee Departments groups with sample categories visible
+- Grid renders all 6 seeded templates with category chip + Get button + employee/download metadata; spot-check on SMMA card content and `data-template-kind="business"`
+- Clicking a category narrows the grid to matching templates (Agency & Services → SMMA + Dev Agency, count = 2)
+- Clearing back to "All Businesses" restores the full grid (count = 6)
+- Empty-grid state when Employees segment is selected (no employee-kind seeds yet)
+- Get button fires the install mutation and navigates to `/c/:installed-:slug-:stamp` — verifies the C-08 gate "click Get → new company → redirect to chat" flow end-to-end against the mock
+- Mid-flight Get button shows installing label + disabled; other Get buttons remain enabled
+- CompanyShell: Store sidebar nav navigates to /store, breadcrumb hides on /store, Store button gets aria-current=page when active
+
+**Gate output (tail):**
+```
+ ✓ src/pages/Store.test.tsx (8 tests) 392ms
+ ✓ src/pages/CompanyShell.test.tsx (20 tests) 3225ms
+ Test Files  2 passed (2)
+      Tests  28 passed (28)
+▶ gate-C-08: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (exit 0). The DB migration check passes after rebasing onto e9c4be6f's renumber fix.
+- `pnpm test:run`: env-flake territory under load. Two runs:
+  - Run 1: 296/301 files pass, 18 timeout failures
+  - Run 2: 296/301 files pass, 13 timeout failures (different set)
+  All failures are "Test timed out" on resource-heavy server / db / postgres tests (plugin-apps-builder router, plugin-payments ledger ops, plugin-dashboards render, plugin-company router, agent-permissions, db migration replays, e2e CLI spawn). Same pattern documented for C-05/C-06/C-09. None of the failures are in UI code.
+
+**Design decisions:**
+1. **Typed-mock data + mocked install, not "TODO empty page".** B-04 + B-05 ship the contract (seeds + transactional install) but plugin-store has no HTTP routes mounted in `server/src/app.ts` yet. Rather than render an empty page or fail closed, the hook returns a 6-template mock hand-mirrored from `packages/plugin-store/src/seeds/*.ts` and the install handler returns an `InstallTemplateResult`-shaped payload. The Get → redirect flow is end-to-end against the mock; when HTTP lands, the swap is two function bodies in `useStoreData`.
+2. **API wrapper exists today, hook calls it tomorrow.** Same split as C-09's `pluginIdentityApi`. `pluginStoreApi.{listTemplates,installTemplate}` are written against the expected route shape so the swap is mechanical.
+3. **Filter rail group `disabled` when segment doesn't apply.** When the user picks "Employees", the Business Categories rail dims and stops accepting clicks (`pointer-events-none + opacity-40`). Cleaner than hiding the group entirely — the user keeps spatial memory of where the categories live.
+4. **Dark cards use semantic Tailwind tokens (`bg-ink`, `border-white/10`, `text-white/60`)** rather than the prototype's raw `#1A1A1A` / `#252525`. The brand swap in C-14 will swap `--ink` once and the cards follow automatically; the prototype's hex values would have to be hunted down.
+5. **`Store` page name shadows `Store` lucide icon** in CompanyShell.tsx — handled with `import { Store as StoreIcon }`. Net 4 lines of edit; the page name better matches the `data-testid="store-view"` and the route segment.
+6. **JSDOM CSS attribute selector with `&` is broken** ("Agency & Services" → null). Wrote a `findRailItem(label)` helper that does `Array.from(querySelectorAll(...)).find(...)`. Worth carrying forward as a project pattern: any test that needs to look up by label containing `&` should not use a CSS attribute selector.
+
+**Notes for next task.** The orchestrator already merged C-09 (0a1d02a8) and B-03 + B-07 since my last work. Suggestion order:
+- **C-10 (Apps > Landing Page detail — Preview / Code / Deployments / Settings)** is now unblocked (B-03 shipped the apps tabs backend on master).
+- **C-11 (Upgrade page + Top-up modal wired to Stripe Checkout)** is unblocked (B-07 shipped the Stripe integration).
+- **C-07 (Drive view)** depends on B-02 which is also merged — could also be picked up.
+
+**P2 tech debt unchanged:** vite main-chunk 3.3 MB warning. C-14 still on the slot list.
