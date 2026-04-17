@@ -18,9 +18,12 @@ export {
 
 export {
   categorizeLiveEvent,
+  installCheckInPosterAllCompanies,
   installCheckInPosterForCompany,
+  type AllCompaniesLiveEventSubscribe,
   type CheckInPosterInstallation,
   type HeartbeatLiveEvent,
+  type InstallCheckInPosterAllCompaniesDeps,
   type InstallCheckInPosterDeps,
   type LiveEventSubscribe,
 } from "./check-in-wiring.js";
