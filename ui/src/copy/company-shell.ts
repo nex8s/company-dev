@@ -51,14 +51,17 @@ export const companyShell = {
 
   gettingStarted: {
     heading: (done: number, total: number) => `${done}/${total} Getting Started`,
+    // Keyed by `@paperclipai/plugin-company`'s GETTING_STARTED_STEPS. Longer
+    // descriptions than A-04's terse `GETTING_STARTED_TITLES` — those are
+    // operator-facing; these are user-facing product copy.
     steps: {
       incorporate: "Incorporate Company",
       domain: "Connect or buy a web domain",
-      emailInboxes: "Setup email inboxes for agents",
-      stripe: "Setup Stripe billing",
-      deploy: "Deploy first website or product",
-      searchConsole: "Setup Google Search Console",
-      dashboards: "Add custom dashboard pages",
+      email_inboxes: "Setup email inboxes for agents",
+      stripe_billing: "Setup Stripe billing",
+      deploy_first_app: "Deploy first website or product",
+      google_search_console: "Setup Google Search Console",
+      custom_dashboard_pages: "Add custom dashboard pages",
     },
     pendingAria: "Pending step",
     doneAria: "Completed step",
