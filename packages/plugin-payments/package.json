@@ -15,6 +15,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./server/index": "./src/server/index.ts",
     "./*": "./src/*.ts"
   },
   "publishConfig": {
@@ -43,10 +44,15 @@
   "dependencies": {
     "@paperclipai/db": "workspace:*",
     "@paperclipai/shared": "workspace:*",
-    "drizzle-orm": "^0.38.4"
+    "drizzle-orm": "^0.38.4",
+    "express": "^5.1.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^24.6.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }
