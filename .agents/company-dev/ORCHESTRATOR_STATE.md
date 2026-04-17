@@ -1,9 +1,9 @@
-# Orchestrator State — 2026-04-17 14:15
+# Orchestrator State — 2026-04-17 14:20
 
 ## Master tip
-`584e0359` on `origin/master`
+`4d7bb086` on `origin/master`
 
-## Merged tasks (15/39 = 38%)
+## Merged tasks (16/39 = 41%)
 
 | ID | Task | Merge commit |
 |---|---|---|
@@ -22,6 +22,7 @@
 | C-04 | Company Chat view + C-03 stub-match patch | cb5a634f |
 | A-06 | heartbeat check-in poster (plugin-company) | 81298947 |
 | A-06.5 | plugin-company HTTP routes + check-in wiring | 584e0359 |
+| C-05 | Overview/Strategy/Payments/Settings tabs | 4d7bb086 |
 
 ## Next tasks per agent
 
@@ -37,11 +38,11 @@
 - Note: stray conflict marker in `packages/db/src/migrations/meta/0058_snapshot.json` (non-blocking for B-10–B-12)
 - Handoff file: `.agents/company-dev/questions/agent-b.md`
 
-### Agent C — next: C-05 (Overview/Strategy/Payments/Settings tabs)
-- Branch: `feat/frontend-port` at 541c5df5
-- Status: C-04 done and merged
-- Next ranking: C-05 → C-06 → C-13 → C-14
-- Blockers: no HTTP routes for plugin-company (Agent A side task); C-13 Playwright harness absent
+### Agent C — next: C-06 (Tasks kanban) — AUTHORIZED 2026-04-17 14:20
+- Branch: `feat/frontend-port` at 329c3fb5 (merged via 4d7bb086)
+- Status: C-05 done and merged; "Needs Review" column has real A-05 data; other columns stub until A-08
+- Next ranking: C-06 → C-13 (Playwright harness) → C-14 (brand swap)
+- Note: plugin-company HTTP routes now live (A-06.5 merged) — useCompanyShellData / useCompanyTabsData seams can swap typed-mock stubs for real queries at your discretion during or after C-06
 - Handoff file: `.agents/company-dev/questions/agent-c.md`
 
 ## Known environmental flakes (5 tests)
