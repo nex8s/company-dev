@@ -318,6 +318,9 @@ importers:
       '@paperclipai/db':
         specifier: workspace:*
         version: link:../db
+      '@paperclipai/plugin-store':
+        specifier: workspace:*
+        version: link:../plugin-store
       '@paperclipai/shared':
         specifier: workspace:*
         version: link:../shared
@@ -748,12 +751,9 @@ importers:
       '@paperclipai/plugin-identity':
         specifier: workspace:*
         version: link:../packages/plugin-identity
-<<<<<<< HEAD
-=======
       '@paperclipai/plugin-payments':
         specifier: workspace:*
         version: link:../packages/plugin-payments
->>>>>>> origin/feat/new-features
       '@paperclipai/plugin-sdk':
         specifier: workspace:*
         version: link:../packages/plugins/sdk

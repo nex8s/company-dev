@@ -4,13 +4,27 @@ import { type Db, companyProfiles } from "@paperclipai/db";
 import {
   companyIdParamSchema,
   decideReviewBodySchema,
+  listPublishedTemplatesQuerySchema,
   patchCompanyProfileBodySchema,
+  publishAgentBodySchema,
+  publishAgentParamSchema,
+  publishCompanyBodySchema,
   reviewIdParamSchema,
   stepIdParamSchema,
   upsertCompanyProfileBodySchema,
 } from "./schemas.js";
 import { completeStep, getChecklist } from "../getting-started/checklist.js";
 import { approveReview, listPendingReviews, rejectReview } from "../reviews/queue.js";
+import {
+  resolveServerPanel,
+  type ServerPanelResolverConfig,
+  type ServerPanelResolverDeps,
+} from "../server-panel/resolver.js";
+import {
+  listPublishedTemplates,
+  publishAgentAsTemplate,
+  publishCompanyAsTemplate,
+} from "../store-publishing/publisher.js";
 import type { z, ZodError } from "zod";
 
 /**
@@ -37,6 +51,14 @@ export interface PluginCompanyRouterDeps {
   readonly authorizeCompanyAccess: (req: Request, companyId: string) => void;
   /** Resolve the calling actor (agent vs user) from the request. */
   readonly resolveActorInfo: (req: Request) => PluginCompanyActorInfo;
+  /**
+   * Config for the A-09 Server panel resolver. Optional — if omitted, the
+   * resolver defaults to reading from `process.env` (FLY_APP_NAME,
+   * FLY_API_TOKEN, FLY_MACHINE_ID). Tests inject this directly.
+   */
+  readonly serverPanelConfig?: () => ServerPanelResolverConfig;
+  /** Optional deps override for the Server panel resolver (test injection). */
+  readonly serverPanelDeps?: ServerPanelResolverDeps;
 }
 
 class HttpError extends Error {
@@ -264,6 +286,94 @@ export function createPluginCompanyRouter(deps: PluginCompanyRouterDeps): Router
     }),
   );
 
+  // -------------------------------------------------------------------------
+  // A-09 Server panel — Fly machine metadata (or local-dev stub).
+  // -------------------------------------------------------------------------
+
+  router.get(
+    "/companies/:companyId/plugin-company/server-panel",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const config = deps.serverPanelConfig
+        ? deps.serverPanelConfig()
+        : {
+            flyAppName: process.env.FLY_APP_NAME ?? null,
+            flyApiToken: process.env.FLY_API_TOKEN ?? null,
+            flyMachineId: process.env.FLY_MACHINE_ID ?? null,
+          };
+      const data = await resolveServerPanel(config, deps.serverPanelDeps);
+      res.json({ serverPanel: data });
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // A-10 Publishing → Store bridge.
+  // -------------------------------------------------------------------------
+
+  router.post(
+    "/companies/:companyId/plugin-company/agents/:agentId/publish",
+    asyncHandler(async (req, res) => {
+      const { companyId, agentId } = parseParams(publishAgentParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const body = parseBody(publishAgentBodySchema, req.body ?? {});
+      try {
+        const template = await publishAgentAsTemplate(deps.db, {
+          companyId,
+          agentId,
+          slug: body.slug,
+          category: body.category,
+          creator: body.creator,
+          summary: body.summary,
+          title: body.title,
+          model: body.model,
+          schedule: body.schedule,
+          responsibilities: body.responsibilities,
+          skills: body.skills,
+          department: body.department,
+        });
+        res.status(201).json({ template });
+      } catch (err) {
+        throw mapPublishError(err);
+      }
+    }),
+  );
+
+  router.post(
+    "/companies/:companyId/plugin-company/publish",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const body = parseBody(publishCompanyBodySchema, req.body ?? {});
+      try {
+        const template = await publishCompanyAsTemplate(deps.db, {
+          companyId,
+          slug: body.slug,
+          category: body.category,
+          creator: body.creator,
+          summary: body.summary,
+          title: body.title,
+          skills: body.skills,
+          agentOverrides: body.agentOverrides,
+        });
+        res.status(201).json({ template });
+      } catch (err) {
+        throw mapPublishError(err);
+      }
+    }),
+  );
+
+  router.get(
+    "/companies/:companyId/plugin-company/store/templates",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const query = parseBody(listPublishedTemplatesQuerySchema, req.query ?? {});
+      const templates = await listPublishedTemplates(deps.db, { kind: query.kind });
+      res.json({ templates });
+    }),
+  );
+
   router.use((err: unknown, _req: Request, res: import("express").Response, next: import("express").NextFunction) => {
     if (err instanceof HttpError) {
       res.status(err.status).json({ error: err.message });
@@ -280,6 +390,25 @@ type AsyncHandler = (
   res: import("express").Response,
   next: import("express").NextFunction,
 ) => Promise<unknown>;
+
+/**
+ * Translate errors from the publisher into HTTP-appropriate `HttpError`s:
+ * - "agent ... not found" → 404
+ * - "company ... has no agents to publish" → 409 (conflict on state)
+ * - slug uniqueness violation (Postgres 23505) → 409
+ * - anything else → rethrown unchanged for the default 500 path.
+ */
+function mapPublishError(err: unknown): unknown {
+  if (err instanceof Error) {
+    if (/agent .* not found/i.test(err.message)) return new HttpError(404, err.message);
+    if (/has no agents to publish/i.test(err.message)) return new HttpError(409, err.message);
+    const code = (err as { code?: string }).code;
+    if (code === "23505" || /duplicate key|unique/i.test(err.message)) {
+      return new HttpError(409, "store template slug already exists");
+    }
+  }
+  return err;
+}
 
 function asyncHandler(fn: AsyncHandler) {
   return (

@@ -4,6 +4,76 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-10 · 2026-04-17 23:30 · agent-A
+**Commit:** ce4d5967 on `feat/backend-wiring` (pushed via force-with-lease after rebase onto ca243748 — the orchestrator's B-03+B-07 merge + migration-renumber pass).
+**Files:** packages/db/src/migrations/0068_store_templates.sql (new), packages/db/src/rollbacks/0068_store_templates.down.sql (new), packages/db/src/migrations/meta/_journal.json (modified — added idx 68), packages/plugin-company/src/store-publishing/{publisher,publisher.test}.ts (new), packages/plugin-company/src/server/store-publish-route.test.ts (new), packages/plugin-company/src/server/{router,schemas}.ts (modified — added 3 routes + zod schemas + mapPublishError helper), packages/plugin-company/src/index.ts (modified — re-export publisher), packages/plugin-company/package.json (added @paperclipai/plugin-store workspace dep), .agents/company-dev/checks/gate-A-10.sh (new).
+
+**Tests:** 22 total, all green:
+- publisher.test.ts (14): publish single agent as employee template (gate round-trip), department inference (enum match → engineering, regex match → marketing/sales/support, unknown → operations fallback), explicit department override, cross-company agent → throws, adapterConfig.model read, duplicate slug → throws (unique index), publish entire company → multi-employee template, CompanyProfile title/description preferred over companies row, per-agent overrides (role/responsibilities on one, defaults for others), empty company → throws, unknown companyId → throws, list newest-first with kind filter, getBySlug, jsonb payload shape in store_templates row.
+- store-publish-route.test.ts (8): POST publish-agent + GET list round-trip + kind filter (gate round-trip), POST publish-company multi-agent (gate round-trip), cross-company agent → 404, duplicate slug → 409, empty company → 409, malformed slug → 400, unknown body field → 400 (strict zod), unknown kind filter → 400.
+
+**Gate output (tail):**
+```
+ ✓ src/server/store-publish-route.test.ts (8 tests) 70336ms
+ ✓ src/store-publishing/publisher.test.ts (14 tests) 95665ms
+ Test Files  2 passed (2)   Tests  22 passed (22)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-10: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: server + plugin-company both `Done`.
+- `pnpm test:run`: not re-run for A-10 per the established "gate + typecheck sufficient" cadence. Orchestrator verifies on a clean checkout.
+
+**Design decisions:**
+1. **A-10 owns the full write path; B-06 layers filters on top.** PLAN.md has A-10 depending on B-06 and B-06 depending on receiving A-10's payload — circular. Resolution: A-10 ships the migration + both publish operations + a minimal `listPublishedTemplates` + GET /store/templates so the gate round-trips without waiting for B-06. B-06 can come back and add pagination / category facets / download-count bumps on the same `store_templates` table with zero contract change.
+2. **Migration lives in packages/db, not plugin-store.** drizzle-kit only scans packages/db/dist; plugin-store's local `storeTemplates` pgTable has been a dangling declaration since scaffold. The 0068 migration finally creates the real table; plugin-store's schema symbol continues to work unchanged.
+3. **`employees` jsonb shape mirrors `SeedTemplate.employees` from plugin-store.** An `employee`-kind template has `employees.length === 1`; a `business`-kind has N. Matches the shape B-05's install flow already consumes, so publish-then-install round-trips without a shape translation layer.
+4. **Department inference is layered, deterministic, explicit-override-wins.** (a) explicit `department` param (b) role string matches HireableDepartment directly (c) regex against common role names (engineer/developer → engineering, market/content/growth → marketing, sales/account/bd → sales, support/success/cx → support) (d) `operations` fallback. Covered by three focused unit tests.
+5. **Duplicate-slug → 409, not 500.** `mapPublishError` catches Postgres 23505 / `/duplicate key|unique/` and translates to HttpError(409, "store template slug already exists"). Also handles "agent not found in company" → 404 and "has no agents to publish" → 409.
+6. **Strict zod body schemas.** Unknown body fields → 400. Slug must match `/^[a-z0-9][a-z0-9-]*[a-z0-9]$/` (3–80 chars). Category/creator capped at 60/120. Skills array capped at 20, responsibilities at 40. agentOverrides record keyed by agentId uuid with strict optional subset.
+7. **CompanyProfile title/description preferred for company-template defaults.** If a `companyProfiles` row exists, its `name` beats `companies.name` for the published title, and its `description` becomes the default summary. Falls through to the Paperclip company row + a generated summary if no profile is present.
+8. **Per-agent overrides only merge the fields passed.** Tests assert that unoverridden agents still get default schedule/responsibilities while overridden agents get their specified values.
+
+**Notes:** A-series is complete (A-01..A-10 + A-06.5 side + A-06.6 gap-fix). All writes to the Company.dev-specific domain tables are wired. Remaining A-agent work is purely responsive (rebases, env-flake triage, questions).
+
+---
+
+## A-09 · 2026-04-17 20:09 · agent-A
+**Commit:** 7ede3cc2 on `feat/backend-wiring` (rebased to f1ce221e post-A-10; pushed).
+**Files:** packages/plugin-company/src/server-panel/{resolver,resolver.test}.ts (new), packages/plugin-company/src/server/server-panel-route.test.ts (new), packages/plugin-company/src/server/router.ts (modified — new GET /server-panel route + optional serverPanelConfig/serverPanelDeps for test injection), packages/plugin-company/src/index.ts (modified — re-exports resolver; version 0.5.0 → 0.6.0), packages/plugin-company/package.json (version bump), .agents/company-dev/checks/gate-A-09.sh (new).
+
+**Tests:** 15 total, all green:
+- resolver.test.ts (12): local-dev stub shape, whitespace-only config trimmed, FLY_APP_NAME-without-FLY_API_TOKEN fallback with explanatory note, live Fly API normalization (machine + events), flyMachineId exact match, flyMachineId miss → first machine, Fly 401 → graceful degraded (mode stays "fly", note carries HTTP status), empty machines list → note, events endpoint 404 → instance still returned + events=[], thrown fetch error → graceful degraded, events cap at 20, Authorization: Bearer header present on every request.
+- server-panel-route.test.ts (3): GET returns 200 + well-formed JSON in local-dev-stub mode, GET returns 200 + well-formed JSON in Fly mode (with an injected mock fetch), 400 on malformed companyId path param.
+
+**Gate output (tail):**
+```
+ ✓ src/server-panel/resolver.test.ts (12 tests) 9ms
+ ✓ src/server/server-panel-route.test.ts (3 tests) 6442ms
+ Test Files  2 passed (2)   Tests  15 passed (15)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-09: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: server + plugin-company both `Done`.
+- `pnpm test:run`: not re-run for A-09 — same env-flake conditions as A-07/A-08 still apply per established cadence. Orchestrator verifies on a clean checkout.
+
+**Design decisions:**
+1. **Route owned by plugin-company, not a new package.** FEATURE_MAPPING.md marks `Company > Settings > Server` as plugin-company's responsibility. Adding one route to the existing plugin-company router is strictly less surface than scaffolding a new package (no new workspace deps, no new mount line in app.ts, no migration).
+2. **Single shape for both modes.** `mode: "fly" | "local-dev-stub"` is the only discriminator; `instance`, `machineEvents`, `note`, `fetchedAt` have the same types in both modes. The UI renders the same component either way — the `mode` + `note` fields are what let it show a "local dev" badge or "Deploy to Fly" CTA.
+3. **Resolver is pure; route reads `process.env`.** `resolveServerPanel(config, deps)` takes config + an injectable fetch. The router either reads `process.env.FLY_APP_NAME` etc., or accepts a test-supplied `serverPanelConfig` factory. Tests never touch `process.env`.
+4. **Graceful degradation on every Fly API failure.** 4xx/5xx → mode stays "fly" but `instance: null` + `note: "Failed to reach Fly API: HTTP 401"`. Thrown fetch errors (network unreachable, aborted) → same shape. The panel UI always gets a well-formed envelope so a broken Fly token doesn't blank the Settings page.
+5. **Events fetch is non-fatal.** A 404 on `/machines/:id/events` drops events to `[]` but keeps the instance object. Machines that have never emitted events (or where the token lacks events scope) still render with live CPU/RAM/region.
+6. **Events capped at 20.** Simple UI sanity cap — the dashboard shows a rolling event log; no need to ship 500 machine events on every poll.
+7. **5s request timeout via AbortController.** If Fly is slow (during an outage), the panel returns a degraded payload quickly instead of holding the request open.
+8. **Target first machine if flyMachineId is absent or doesn't match.** Most Fly apps run one machine; for HA setups the operator sets `FLY_MACHINE_ID` explicitly. This avoids returning a random machine on each poll.
+
+**Notes for next task:** A-10 (Publishing → Store bridge) depends on B-06 (Store publishing). Will check if B-06 has shipped before scaffolding the publish-agent / publish-company endpoints on the A-side.
+
+---
+
 ## A-06.6 · 2026-04-17 15:05 · agent-A
 **Commit:** fc090e7c on `feat/backend-wiring` (pushed to origin via 69f8fc70)
 ## A-08 · 2026-04-17 18:26 · agent-A

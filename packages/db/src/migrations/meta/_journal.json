@@ -477,6 +477,13 @@
       "when": 1776439339054,
       "tag": "0067_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1776440000000,
+      "tag": "0068_store_templates",
+      "breakpoints": true
     }
   ]
 }
