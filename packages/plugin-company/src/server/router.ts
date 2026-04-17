@@ -11,6 +11,11 @@ import {
 } from "./schemas.js";
 import { completeStep, getChecklist } from "../getting-started/checklist.js";
 import { approveReview, listPendingReviews, rejectReview } from "../reviews/queue.js";
+import {
+  resolveServerPanel,
+  type ServerPanelResolverConfig,
+  type ServerPanelResolverDeps,
+} from "../server-panel/resolver.js";
 import type { z, ZodError } from "zod";
 
 /**
@@ -37,6 +42,14 @@ export interface PluginCompanyRouterDeps {
   readonly authorizeCompanyAccess: (req: Request, companyId: string) => void;
   /** Resolve the calling actor (agent vs user) from the request. */
   readonly resolveActorInfo: (req: Request) => PluginCompanyActorInfo;
+  /**
+   * Config for the A-09 Server panel resolver. Optional — if omitted, the
+   * resolver defaults to reading from `process.env` (FLY_APP_NAME,
+   * FLY_API_TOKEN, FLY_MACHINE_ID). Tests inject this directly.
+   */
+  readonly serverPanelConfig?: () => ServerPanelResolverConfig;
+  /** Optional deps override for the Server panel resolver (test injection). */
+  readonly serverPanelDeps?: ServerPanelResolverDeps;
 }
 
 class HttpError extends Error {
@@ -261,6 +274,27 @@ export function createPluginCompanyRouter(deps: PluginCompanyRouterDeps): Router
         .returning({ id: companyProfiles.id });
       if (deleted.length === 0) throw new HttpError(404, "company profile not found");
       res.status(204).send();
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // A-09 Server panel — Fly machine metadata (or local-dev stub).
+  // -------------------------------------------------------------------------
+
+  router.get(
+    "/companies/:companyId/plugin-company/server-panel",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const config = deps.serverPanelConfig
+        ? deps.serverPanelConfig()
+        : {
+            flyAppName: process.env.FLY_APP_NAME ?? null,
+            flyApiToken: process.env.FLY_API_TOKEN ?? null,
+            flyMachineId: process.env.FLY_MACHINE_ID ?? null,
+          };
+      const data = await resolveServerPanel(config, deps.serverPanelDeps);
+      res.json({ serverPanel: data });
     }),
   );
 

@@ -20,6 +20,7 @@ export * from "./getting-started/checklist.js";
 export * from "./getting-started/steps.js";
 export * from "./reviews/queue.js";
 export * from "./heartbeat/check-in-poster.js";
+export * from "./server-panel/resolver.js";
 
 export interface CompanyPluginRegistration {
   readonly name: "plugin-company";
@@ -35,6 +36,6 @@ export interface CompanyPluginRegistration {
 export function registerPlugin(): CompanyPluginRegistration {
   return {
     name: "plugin-company",
-    version: "0.5.0",
+    version: "0.6.0",
   };
 }
