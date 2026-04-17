@@ -429,7 +429,7 @@ Test Files  1 passed (1)
 ---
 
 ## B-09 · 2026-04-17 05:15 · agent-B
-**Commit:** (pending push) on `feat/new-features`
+**Commit:** df4b2a74 on `feat/new-features` (pushed to origin)
 **Files:** packages/plugin-identity/package.json (new), tsconfig.json (new), vitest.config.ts (new), src/index.ts (new — `registerPlugin`), src/identity/{provider,mock,contract,index}.ts (new), src/identity/mock.contract.test.ts (new), .agents/company-dev/checks/gate-B-09.sh (new), pnpm-lock.yaml (workspace entry added).
 **Tests:** `mock.contract.test.ts` (11 tests via `runIdentityProviderContract("MockIdentityProvider", …)` + 3 mock-specific): response shape, round-trip, company filter, idempotency with key, no-dedup without key, state→jurisdiction, dissolve success, dissolve-unknown failure, stub-prefix ids, Delaware default, structured log events. All pass in 245ms.
 **Gate output (tail):**
