@@ -1,4 +1,5 @@
 export * from "./identity/index.js";
+export * from "./bank/index.js";
 
 export function registerPlugin(): {
   name: string;

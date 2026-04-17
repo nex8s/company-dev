@@ -9,6 +9,7 @@ export default defineConfig({
       "packages/plugin-company",
       "packages/plugin-apps-builder",
       "packages/plugin-store",
+      "packages/plugin-identity",
       "server",
       "ui",
       "cli",
