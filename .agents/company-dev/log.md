@@ -4,6 +4,41 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-09 · 2026-04-17 20:09 · agent-A
+**Commit:** 7ede3cc2 on `feat/backend-wiring` (pushed).
+**Files:** packages/plugin-company/src/server-panel/{resolver,resolver.test}.ts (new), packages/plugin-company/src/server/server-panel-route.test.ts (new), packages/plugin-company/src/server/router.ts (modified — new GET /server-panel route + optional serverPanelConfig/serverPanelDeps for test injection), packages/plugin-company/src/index.ts (modified — re-exports resolver; version 0.5.0 → 0.6.0), packages/plugin-company/package.json (version bump), .agents/company-dev/checks/gate-A-09.sh (new).
+
+**Tests:** 15 total, all green:
+- resolver.test.ts (12): local-dev stub shape, whitespace-only config trimmed, FLY_APP_NAME-without-FLY_API_TOKEN fallback with explanatory note, live Fly API normalization (machine + events), flyMachineId exact match, flyMachineId miss → first machine, Fly 401 → graceful degraded (mode stays "fly", note carries HTTP status), empty machines list → note, events endpoint 404 → instance still returned + events=[], thrown fetch error → graceful degraded, events cap at 20, Authorization: Bearer header present on every request.
+- server-panel-route.test.ts (3): GET returns 200 + well-formed JSON in local-dev-stub mode, GET returns 200 + well-formed JSON in Fly mode (with an injected mock fetch), 400 on malformed companyId path param.
+
+**Gate output (tail):**
+```
+ ✓ src/server-panel/resolver.test.ts (12 tests) 9ms
+ ✓ src/server/server-panel-route.test.ts (3 tests) 6442ms
+ Test Files  2 passed (2)   Tests  15 passed (15)
+> @paperclipai/server@0.3.1 typecheck
+▶ gate-A-09: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: server + plugin-company both `Done`.
+- `pnpm test:run`: not re-run for A-09 — same env-flake conditions as A-07/A-08 still apply per established cadence. Orchestrator verifies on a clean checkout.
+
+**Design decisions:**
+1. **Route owned by plugin-company, not a new package.** FEATURE_MAPPING.md marks `Company > Settings > Server` as plugin-company's responsibility. Adding one route to the existing plugin-company router is strictly less surface than scaffolding a new package (no new workspace deps, no new mount line in app.ts, no migration).
+2. **Single shape for both modes.** `mode: "fly" | "local-dev-stub"` is the only discriminator; `instance`, `machineEvents`, `note`, `fetchedAt` have the same types in both modes. The UI renders the same component either way — the `mode` + `note` fields are what let it show a "local dev" badge or "Deploy to Fly" CTA.
+3. **Resolver is pure; route reads `process.env`.** `resolveServerPanel(config, deps)` takes config + an injectable fetch. The router either reads `process.env.FLY_APP_NAME` etc., or accepts a test-supplied `serverPanelConfig` factory. Tests never touch `process.env`.
+4. **Graceful degradation on every Fly API failure.** 4xx/5xx → mode stays "fly" but `instance: null` + `note: "Failed to reach Fly API: HTTP 401"`. Thrown fetch errors (network unreachable, aborted) → same shape. The panel UI always gets a well-formed envelope so a broken Fly token doesn't blank the Settings page.
+5. **Events fetch is non-fatal.** A 404 on `/machines/:id/events` drops events to `[]` but keeps the instance object. Machines that have never emitted events (or where the token lacks events scope) still render with live CPU/RAM/region.
+6. **Events capped at 20.** Simple UI sanity cap — the dashboard shows a rolling event log; no need to ship 500 machine events on every poll.
+7. **5s request timeout via AbortController.** If Fly is slow (during an outage), the panel returns a degraded payload quickly instead of holding the request open.
+8. **Target first machine if flyMachineId is absent or doesn't match.** Most Fly apps run one machine; for HA setups the operator sets `FLY_MACHINE_ID` explicitly. This avoids returning a random machine on each poll.
+
+**Notes for next task:** A-10 (Publishing → Store bridge) depends on B-06 (Store publishing). Will check if B-06 has shipped before scaffolding the publish-agent / publish-company endpoints on the A-side.
+
+---
+
 ## A-06.6 · 2026-04-17 15:05 · agent-A
 **Commit:** fc090e7c on `feat/backend-wiring` (pushed to origin via 69f8fc70)
 ## A-08 · 2026-04-17 18:26 · agent-A
