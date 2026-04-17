@@ -16,5 +16,9 @@ export {
   companyAgentParamSchema,
   cardIdParamSchema,
   issueCardBodySchema,
+  companyIdParamSchema,
+  createDomainBodySchema,
+  domainIdParamSchema,
   type IssueCardBody,
+  type CreateDomainBody,
 } from "./schemas.js";

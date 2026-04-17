@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import express, { type Request } from "express";
 import request from "supertest";
+import type { Db } from "@paperclipai/db";
 import { MockBankProvider } from "../bank/mock.js";
+import { MockEmailProvider } from "../email/mock.js";
 import {
   createPluginIdentityRouter,
   type PluginIdentityActorInfo,
@@ -18,6 +20,11 @@ interface AppCtx {
 
 function buildApp(): AppCtx {
   const bankProvider = new MockBankProvider();
+  // Cards routes don't touch the DB or EmailProvider, so a stub Db is
+  // safe here. The B-15 domain routes have their own embedded-postgres
+  // suite in `domains.router.test.ts`.
+  const stubDb = {} as unknown as Db;
+  const emailProvider = new MockEmailProvider();
   let actor: PluginIdentityActorInfo | null = {
     actorType: "user",
     actorId: "user-stub",
@@ -30,7 +37,9 @@ function buildApp(): AppCtx {
   app.use(express.json());
   app.use(
     createPluginIdentityRouter({
+      db: stubDb,
       bankProvider,
+      emailProvider,
       authorizeCompanyAccess: (_req: Request, companyId: string) => {
         if (denyCompanyId && denyCompanyId === companyId) {
           throw Object.assign(new Error("forbidden"), { status: 403 });

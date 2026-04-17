@@ -1,9 +1,22 @@
 import { Router, type Request } from "express";
 import type { z, ZodError } from "zod";
+import type { Db } from "@paperclipai/db";
 import type { BankProvider, VirtualCard } from "../bank/index.js";
+import type { EmailProvider } from "../email/index.js";
+import {
+  createDomain,
+  deleteDomain,
+  getDomain,
+  listDomains,
+  setDefaultDomain,
+  type DomainRow,
+} from "../domains/index.js";
 import {
   cardIdParamSchema,
   companyAgentParamSchema,
+  companyIdParamSchema,
+  createDomainBodySchema,
+  domainIdParamSchema,
   issueCardBodySchema,
 } from "./schemas.js";
 
@@ -19,8 +32,12 @@ export interface PluginIdentityActorInfo {
 }
 
 export interface PluginIdentityRouterDeps {
+  /** Drizzle handle. Required for B-15 domain persistence. */
+  readonly db: Db;
   /** Backing BankProvider — Mock in dev/test, real (Mercury/Column/Stripe) in prod. */
   readonly bankProvider: BankProvider;
+  /** Backing EmailProvider — Mock in dev/test, real (Resend/Postmark) in prod. */
+  readonly emailProvider: EmailProvider;
   /**
    * Authorize the request for the given companyId. Implementations should
    * throw an HTTP-shaped error (e.g. via `assertCompanyAccess`) when access
@@ -136,6 +153,70 @@ export function createPluginIdentityRouter(deps: PluginIdentityRouterDeps): Rout
     }),
   );
 
+  // ---------------------------------------------------------------------
+  // Domains (B-15)
+  //   GET    /companies/:companyId/plugin-identity/domains
+  //   POST   /companies/:companyId/plugin-identity/domains
+  //   POST   /companies/:companyId/plugin-identity/domains/:domainId/default
+  //   DELETE /companies/:companyId/plugin-identity/domains/:domainId
+  // ---------------------------------------------------------------------
+
+  router.get(
+    "/companies/:companyId/plugin-identity/domains",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const rows = await listDomains(deps.db, companyId);
+      res.json({ domains: rows.map(toDomainDto) });
+    }),
+  );
+
+  router.post(
+    "/companies/:companyId/plugin-identity/domains",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const body = parseBody(createDomainBodySchema, req.body ?? {});
+
+      try {
+        const row = await createDomain(deps.db, deps.emailProvider, {
+          companyId,
+          domain: body.domain,
+        });
+        res.status(201).json({ domain: toDomainDto(row) });
+      } catch (err) {
+        if (err instanceof Error && /unique|duplicate/i.test(err.message)) {
+          throw new HttpError(409, `domain already connected: ${body.domain}`);
+        }
+        throw err;
+      }
+    }),
+  );
+
+  router.post(
+    "/companies/:companyId/plugin-identity/domains/:domainId/default",
+    asyncHandler(async (req, res) => {
+      const { companyId, domainId } = parseParams(domainIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const updated = await setDefaultDomain(deps.db, companyId, domainId);
+      if (!updated) throw new HttpError(404, `domain not found: ${domainId}`);
+      res.json({ domain: toDomainDto(updated) });
+    }),
+  );
+
+  router.delete(
+    "/companies/:companyId/plugin-identity/domains/:domainId",
+    asyncHandler(async (req, res) => {
+      const { companyId, domainId } = parseParams(domainIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      // Surface a 404 *before* deleting so the client can tell missing-vs-no-op.
+      const existing = await getDomain(deps.db, companyId, domainId);
+      if (!existing) throw new HttpError(404, `domain not found: ${domainId}`);
+      await deleteDomain(deps.db, companyId, domainId);
+      res.status(204).send();
+    }),
+  );
+
   router.use((err: unknown, _req: Request, res: import("express").Response, next: import("express").NextFunction) => {
     if (err instanceof HttpError) {
       res.status(err.status).json({ error: err.message });
@@ -168,6 +249,18 @@ function toCardDto(card: VirtualCard) {
     merchantCategoryFilters: card.merchantCategoryFilters,
     status: card.status,
     createdAt: card.createdAt.toISOString(),
+  };
+}
+
+function toDomainDto(row: DomainRow) {
+  return {
+    id: row.id,
+    companyId: row.companyId,
+    domain: row.domain,
+    isDefault: row.isDefault,
+    status: row.status,
+    dnsRecords: row.dnsRecords,
+    registeredAt: row.registeredAt.toISOString(),
   };
 }
 

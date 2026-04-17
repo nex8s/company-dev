@@ -286,7 +286,7 @@ export async function createApp(
   api.use(adapterRoutes());
   api.use(pluginCompanyRoutes(db));
   api.use(pluginConnectToolsRoutes(db));
-  api.use(pluginIdentityRoutes());
+  api.use(pluginIdentityRoutes(db));
   api.use(
     accessRoutes(db, {
       deploymentMode: opts.deploymentMode,
