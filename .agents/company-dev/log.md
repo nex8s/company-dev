@@ -4,6 +4,42 @@ Append-only log of completed tasks. Format per SELF_CHECK_PROTOCOL.md.
 
 ---
 
+## A-06 · 2026-04-17 05:42 · agent-A
+**Commit:** 40ff1adb on `feat/backend-wiring` (pushed to origin, force-with-lease after rebase onto master)
+**Files:** packages/plugin-company/src/heartbeat/check-in-poster.ts (new), packages/plugin-company/src/heartbeat/check-in-poster.test.ts (new), packages/plugin-company/src/index.ts (modified — re-exports new module), packages/plugin-company/package.json (modified — version 0.3.1 → 0.4.0), .agents/company-dev/checks/gate-A-06.sh (new).
+**Tests:** check-in-poster.test.ts —
+- formatCheckInBody (A-06) › prefixes every body with `via check-in:` (pass)
+- formatCheckInBody (A-06) › includes errorCode and detail for error_recovery (pass)
+- formatCheckInBody (A-06) › trims whitespace-only detail rather than emitting an empty separator (pass)
+- check-in poster (A-06) › posts a `via check-in` comment to the company chat issue when an adapter error_recovery event fires (pass)
+- check-in poster (A-06) › posts on restart and retry kinds in addition to error_recovery (pass)
+- check-in poster (A-06) › skips with `no-issue` when the run is not bound to any issue (pass)
+- check-in poster (A-06) › is idempotent: re-emitting the same lifecycle event posts only one comment (pass)
+- check-in poster (A-06) › scopes resolution by companyId — does not post into another company's issue (pass)
+
+**Gate output (tail):**
+```
+ ✓ src/heartbeat/check-in-poster.test.ts (8 tests) 7665ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+▶ gate-A-06: all checks passed
+```
+
+**Full-repo checks:**
+- `pnpm typecheck`: all packages pass (all `Done`, no errors).
+- `pnpm test:run`: **275 files / 1572 pass, 1 skipped, 0 failed**. None of the 5 known env-flakes (cli-auth-routes, issue-feedback-routes, openclaw-invite-prompt-route, agent-permissions-routes, issue-activity-events-routes) hit on this quiesced run.
+
+**Design decisions:**
+1. **Plugin-side leaf only.** `createCheckInPoster` is a pure unit: given a `RunLifecycleEvent` and a `db` + `resolveIssueIdForRun` resolver, it inserts one `issue_comments` row prefixed with `via check-in:`. Subscribing the poster to Paperclip's run-status stream is the wiring layer's job and is intentionally deferred to A-06.5 (when the plugin gets its first registered HTTP routes + `registerPlugin(context)` host-services hookup). This keeps A-06 confined to `packages/plugin-company/` per the hard rule — no `server/` edits.
+2. **Body shape is deterministic.** `issue_comments` has no natural unique index for the (run, kind) pair. The poster relies on exact body equality plus `(companyId, issueId, runId)` to detect duplicates, so `formatCheckInBody` carefully trims whitespace and emits the same string for repeated emissions of the same event. Dedup query selects on `eq(body)` directly.
+3. **System-author comments leave both `authorAgentId` and `authorUserId` null.** The `via check-in:` prefix is the renderer's marker. This avoids inventing a synthetic system agent and avoids polluting `authorUserId` with magic strings the UI would have to special-case.
+4. **`resolveIssueIdForRunByExecution` is the default resolver.** Looks up `issues.executionRunId = runId` (scoped by companyId — company isolation is enforced at the resolver, not at the insert). Wiring layer can substitute a richer resolver that also peeks at `heartbeat_runs.contextSnapshot.issueId` if needed.
+5. **No core edits.** Verified by gate-A-06 step 4: `git diff --name-only origin/master..HEAD` must contain only `packages/plugin-company/` and `.agents/company-dev/` paths. Fails the gate otherwise.
+
+**Notes for next task (A-06.5 — side task):** Add zod-validated HTTP routes for the plugin-company API surface (`getChecklist`, `completeStep`, `listPendingReviews`, `approveReview`, `rejectReview`, `CompanyProfile` CRUD) so Agent C can swap UI stubs for live queries. Same commit will land the plugin-bootstrap module that subscribes the A-06 poster to Paperclip's run-status stream — that wiring is the smallest possible server-side glue (event subscription only, no behaviour) and is the natural home alongside the route registration.
+
+---
+
 ## Phase 0 · 2026-04-16 · orchestrator
 **Bootstrap:** forked paperclipai/paperclip → nex8s/company-dev, cloned to ~/company-dev/, added paperclip-upstream remote, staged ui-import/ (landing.html + dashboard.html), drafted bundle docs and agent prompts, created 3 feature branches.
 
