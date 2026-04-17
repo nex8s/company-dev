@@ -21,6 +21,7 @@ export * from "./getting-started/steps.js";
 export * from "./reviews/queue.js";
 export * from "./heartbeat/check-in-poster.js";
 export * from "./server-panel/resolver.js";
+export * from "./store-publishing/publisher.js";
 
 export interface CompanyPluginRegistration {
   readonly name: "plugin-company";

@@ -52,3 +52,78 @@ export const patchCompanyProfileBodySchema = upsertCompanyProfileBodySchema
   });
 
 export type PatchCompanyProfileBody = z.infer<typeof patchCompanyProfileBodySchema>;
+
+// ---------------------------------------------------------------------------
+// A-10 Publishing → Store bridge
+// ---------------------------------------------------------------------------
+
+const slugSchema = z
+  .string()
+  .min(3)
+  .max(80)
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, {
+    message: "slug must be lowercase letters/digits/hyphens, starting and ending with an alphanumeric",
+  });
+
+const departmentSchema = z.enum([
+  "engineering",
+  "marketing",
+  "operations",
+  "sales",
+  "support",
+] as const);
+
+export const publishAgentParamSchema = z.object({
+  companyId: z.string().uuid(),
+  agentId: z.string().uuid(),
+});
+
+export const publishAgentBodySchema = z
+  .object({
+    slug: slugSchema,
+    category: z.string().min(1).max(60),
+    creator: z.string().min(1).max(120),
+    summary: z.string().max(5000).optional(),
+    title: z.string().max(200).optional(),
+    model: z.string().max(120).optional(),
+    schedule: z.string().max(60).optional(),
+    responsibilities: z.array(z.string().max(300)).max(40).optional(),
+    skills: z.array(z.string().max(60)).max(20).optional(),
+    department: departmentSchema.optional(),
+  })
+  .strict();
+
+export type PublishAgentBody = z.infer<typeof publishAgentBodySchema>;
+
+export const publishCompanyBodySchema = z
+  .object({
+    slug: slugSchema,
+    category: z.string().min(1).max(60),
+    creator: z.string().min(1).max(120),
+    summary: z.string().max(5000).optional(),
+    title: z.string().max(200).optional(),
+    skills: z.array(z.string().max(60)).max(20).optional(),
+    agentOverrides: z
+      .record(
+        z.string().uuid(),
+        z
+          .object({
+            role: z.string().max(120).optional(),
+            department: departmentSchema.optional(),
+            model: z.string().max(120).optional(),
+            schedule: z.string().max(60).optional(),
+            responsibilities: z.array(z.string().max(300)).max(40).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+  })
+  .strict();
+
+export type PublishCompanyBody = z.infer<typeof publishCompanyBodySchema>;
+
+export const listPublishedTemplatesQuerySchema = z
+  .object({
+    kind: z.enum(["employee", "business"]).optional(),
+  })
+  .strict();

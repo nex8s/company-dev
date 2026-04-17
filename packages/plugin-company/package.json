@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@paperclipai/db": "workspace:*",
+    "@paperclipai/plugin-store": "workspace:*",
     "@paperclipai/shared": "workspace:*",
     "drizzle-orm": "^0.38.4",
     "express": "^5.1.0",

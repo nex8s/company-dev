@@ -4,7 +4,11 @@ import { type Db, companyProfiles } from "@paperclipai/db";
 import {
   companyIdParamSchema,
   decideReviewBodySchema,
+  listPublishedTemplatesQuerySchema,
   patchCompanyProfileBodySchema,
+  publishAgentBodySchema,
+  publishAgentParamSchema,
+  publishCompanyBodySchema,
   reviewIdParamSchema,
   stepIdParamSchema,
   upsertCompanyProfileBodySchema,
@@ -16,6 +20,11 @@ import {
   type ServerPanelResolverConfig,
   type ServerPanelResolverDeps,
 } from "../server-panel/resolver.js";
+import {
+  listPublishedTemplates,
+  publishAgentAsTemplate,
+  publishCompanyAsTemplate,
+} from "../store-publishing/publisher.js";
 import type { z, ZodError } from "zod";
 
 /**
@@ -298,6 +307,73 @@ export function createPluginCompanyRouter(deps: PluginCompanyRouterDeps): Router
     }),
   );
 
+  // -------------------------------------------------------------------------
+  // A-10 Publishing → Store bridge.
+  // -------------------------------------------------------------------------
+
+  router.post(
+    "/companies/:companyId/plugin-company/agents/:agentId/publish",
+    asyncHandler(async (req, res) => {
+      const { companyId, agentId } = parseParams(publishAgentParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const body = parseBody(publishAgentBodySchema, req.body ?? {});
+      try {
+        const template = await publishAgentAsTemplate(deps.db, {
+          companyId,
+          agentId,
+          slug: body.slug,
+          category: body.category,
+          creator: body.creator,
+          summary: body.summary,
+          title: body.title,
+          model: body.model,
+          schedule: body.schedule,
+          responsibilities: body.responsibilities,
+          skills: body.skills,
+          department: body.department,
+        });
+        res.status(201).json({ template });
+      } catch (err) {
+        throw mapPublishError(err);
+      }
+    }),
+  );
+
+  router.post(
+    "/companies/:companyId/plugin-company/publish",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const body = parseBody(publishCompanyBodySchema, req.body ?? {});
+      try {
+        const template = await publishCompanyAsTemplate(deps.db, {
+          companyId,
+          slug: body.slug,
+          category: body.category,
+          creator: body.creator,
+          summary: body.summary,
+          title: body.title,
+          skills: body.skills,
+          agentOverrides: body.agentOverrides,
+        });
+        res.status(201).json({ template });
+      } catch (err) {
+        throw mapPublishError(err);
+      }
+    }),
+  );
+
+  router.get(
+    "/companies/:companyId/plugin-company/store/templates",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const query = parseBody(listPublishedTemplatesQuerySchema, req.query ?? {});
+      const templates = await listPublishedTemplates(deps.db, { kind: query.kind });
+      res.json({ templates });
+    }),
+  );
+
   router.use((err: unknown, _req: Request, res: import("express").Response, next: import("express").NextFunction) => {
     if (err instanceof HttpError) {
       res.status(err.status).json({ error: err.message });
@@ -314,6 +390,25 @@ type AsyncHandler = (
   res: import("express").Response,
   next: import("express").NextFunction,
 ) => Promise<unknown>;
+
+/**
+ * Translate errors from the publisher into HTTP-appropriate `HttpError`s:
+ * - "agent ... not found" → 404
+ * - "company ... has no agents to publish" → 409 (conflict on state)
+ * - slug uniqueness violation (Postgres 23505) → 409
+ * - anything else → rethrown unchanged for the default 500 path.
+ */
+function mapPublishError(err: unknown): unknown {
+  if (err instanceof Error) {
+    if (/agent .* not found/i.test(err.message)) return new HttpError(404, err.message);
+    if (/has no agents to publish/i.test(err.message)) return new HttpError(409, err.message);
+    const code = (err as { code?: string }).code;
+    if (code === "23505" || /duplicate key|unique/i.test(err.message)) {
+      return new HttpError(409, "store template slug already exists");
+    }
+  }
+  return err;
+}
 
 function asyncHandler(fn: AsyncHandler) {
   return (
