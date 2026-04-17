@@ -54,6 +54,7 @@
     "@paperclipai/adapter-utils": "workspace:*",
     "@paperclipai/db": "workspace:*",
     "@paperclipai/plugin-company": "workspace:*",
+    "@paperclipai/plugin-connect-tools": "workspace:*",
     "@paperclipai/plugin-identity": "workspace:*",
     "@paperclipai/plugin-sdk": "workspace:*",
     "@paperclipai/shared": "workspace:*",

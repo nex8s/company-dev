@@ -10,6 +10,7 @@ export default defineConfig({
       "packages/plugin-apps-builder",
       "packages/plugin-store",
       "packages/plugin-identity",
+      "packages/plugin-connect-tools",
       "server",
       "ui",
       "cli",

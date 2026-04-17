@@ -428,6 +428,13 @@
       "when": 1776382335396,
       "tag": "0060_wise_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1776426272852,
+      "tag": "0061_young_roland_deschain",
+      "breakpoints": true
     }
   ]
 }
