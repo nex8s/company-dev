@@ -411,13 +411,8 @@
     {
       "idx": 58,
       "version": "7",
-<<<<<<< HEAD
       "when": 1776381489762,
       "tag": "0058_loving_richard_fisk",
-=======
-      "when": 1776382335396,
-      "tag": "0058_wise_pixie",
->>>>>>> origin/feat/new-features
       "breakpoints": true
     },
     {
@@ -425,6 +420,13 @@
       "version": "7",
       "when": 1776382547440,
       "tag": "0059_sleepy_white_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1776382335396,
+      "tag": "0060_wise_pixie",
       "breakpoints": true
     }
   ]
