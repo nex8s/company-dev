@@ -47,16 +47,34 @@ export interface CompanyShellPendingReview {
   kind: "review" | "todo";
 }
 
-export interface CompanyShellGettingStartedStep {
-  id:
-    | "incorporate"
-    | "domain"
-    | "emailInboxes"
-    | "stripe"
-    | "deploy"
-    | "searchConsole"
-    | "dashboards";
-  done: boolean;
+/**
+ * Step keys + shape mirror `@paperclipai/plugin-company`'s
+ * GETTING_STARTED_STEPS / ChecklistStep / Checklist contract exactly.
+ * When Agent A adds the `GET /api/companies/:companyId/getting-started`
+ * HTTP route, the `gettingStarted` field on CompanyShellData becomes a
+ * 1-line useQuery swap — the component code is already coded against
+ * this shape.
+ */
+export type CompanyShellStepKey =
+  | "incorporate"
+  | "domain"
+  | "email_inboxes"
+  | "stripe_billing"
+  | "deploy_first_app"
+  | "google_search_console"
+  | "custom_dashboard_pages";
+
+export interface CompanyShellChecklistStep {
+  readonly key: CompanyShellStepKey;
+  readonly title: string;
+  readonly completedAt: Date | null;
+}
+
+export interface CompanyShellChecklist {
+  readonly companyId: string;
+  readonly completed: number;
+  readonly total: number;
+  readonly steps: readonly CompanyShellChecklistStep[];
 }
 
 export interface CompanyShellUser {
@@ -73,7 +91,7 @@ export interface CompanyShellData {
   departments: CompanyShellDeptGroup[];
   apps: CompanyShellApp[];
   pendingReviews: CompanyShellPendingReview[];
-  gettingStarted: CompanyShellGettingStartedStep[];
+  gettingStarted: CompanyShellChecklist;
   user: CompanyShellUser;
   isLoading: boolean;
   error: Error | null;
@@ -155,18 +173,39 @@ const MOCK_PENDING_REVIEWS: CompanyShellPendingReview[] = [
   },
 ];
 
-// TODO(A-04 HTTP): swap for `useQuery(plugin-company.getGettingStarted(companyId))`.
-// Static preview until A-04's 7-step state machine lands — exactly one step
-// complete (the "deploy" step) matches the prototype's 1/7 default.
-const MOCK_GETTING_STARTED: CompanyShellGettingStartedStep[] = [
-  { id: "incorporate", done: false },
-  { id: "domain", done: false },
-  { id: "emailInboxes", done: false },
-  { id: "stripe", done: false },
-  { id: "deploy", done: true },
-  { id: "searchConsole", done: false },
-  { id: "dashboards", done: false },
-];
+// TODO(A-04 HTTP): swap this block for a React-Query call once Agent A adds
+// `GET /api/companies/:companyId/getting-started`. Response body is exactly
+// CompanyShellChecklist (wire-compatible with plugin-company's Checklist).
+// Keeping "deploy_first_app" as the single completed step matches the
+// prototype's 1/7 preview.
+const MOCK_CHECKLIST_TITLES: Record<CompanyShellStepKey, string> = {
+  incorporate: "Incorporate",
+  domain: "Domain",
+  email_inboxes: "Email inboxes",
+  stripe_billing: "Stripe billing",
+  deploy_first_app: "Deploy first app",
+  google_search_console: "Google Search Console",
+  custom_dashboard_pages: "Custom dashboard pages",
+};
+const MOCK_CHECKLIST_STEP_KEYS: readonly CompanyShellStepKey[] = [
+  "incorporate",
+  "domain",
+  "email_inboxes",
+  "stripe_billing",
+  "deploy_first_app",
+  "google_search_console",
+  "custom_dashboard_pages",
+] as const;
+function buildMockChecklist(companyId: string): CompanyShellChecklist {
+  const steps = MOCK_CHECKLIST_STEP_KEYS.map<CompanyShellChecklistStep>((key) => ({
+    key,
+    title: MOCK_CHECKLIST_TITLES[key],
+    completedAt:
+      key === "deploy_first_app" ? new Date("2026-04-16T20:00:00Z") : null,
+  }));
+  const completed = steps.filter((s) => s.completedAt !== null).length;
+  return { companyId, completed, total: steps.length, steps };
+}
 
 // TODO(Paperclip auth): swap for the existing `authApi.getSession` query
 // already wired in App.tsx's CloudAccessGate — once the shell mounts behind
@@ -193,7 +232,7 @@ export function useCompanyShellData(companyId: string): CompanyShellData {
     departments: MOCK_DEPARTMENTS,
     apps: MOCK_APPS,
     pendingReviews: MOCK_PENDING_REVIEWS,
-    gettingStarted: MOCK_GETTING_STARTED,
+    gettingStarted: buildMockChecklist(company.id),
     user: MOCK_USER,
     isLoading: false,
     error: null,

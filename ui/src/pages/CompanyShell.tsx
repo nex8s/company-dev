@@ -1,5 +1,4 @@
 import type { ComponentProps, ReactNode } from "react";
-import { useMemo } from "react";
 import {
   ArrowUpRight,
   Building2,
@@ -35,10 +34,11 @@ import {
 } from "@/components/ui/collapsible";
 import { companyShell as copy } from "@/copy/company-shell";
 import {
+  type CompanyShellChecklist,
+  type CompanyShellChecklistStep,
   type CompanyShellCompany,
   type CompanyShellData,
   type CompanyShellDeptGroup,
-  type CompanyShellGettingStartedStep,
   type CompanyShellPendingReview,
   useCompanyShellData,
 } from "@/hooks/useCompanyShellData";
@@ -175,7 +175,7 @@ function Sidebar({ data }: { data: CompanyShellData }) {
         <SidebarPrimaryNav />
         <AppsSection apps={data.apps} />
         <TeamSection ceo={data.ceo} departments={data.departments} />
-        <GettingStartedPanel steps={data.gettingStarted} />
+        <GettingStartedPanel checklist={data.gettingStarted} />
       </nav>
 
       <SidebarFooter
@@ -539,13 +539,9 @@ function DeptGroup({ dept }: { dept: CompanyShellDeptGroup }) {
 // Getting Started panel — A-04 stub
 // ---------------------------------------------------------------------------
 
-function GettingStartedPanel({
-  steps,
-}: {
-  steps: CompanyShellGettingStartedStep[];
-}) {
-  const doneCount = useMemo(() => steps.filter((s) => s.done).length, [steps]);
-  const progress = steps.length === 0 ? 0 : (doneCount / steps.length) * 100;
+function GettingStartedPanel({ checklist }: { checklist: CompanyShellChecklist }) {
+  const { completed, total, steps } = checklist;
+  const progress = total === 0 ? 0 : (completed / total) * 100;
 
   return (
     <Collapsible
@@ -558,13 +554,13 @@ function GettingStartedPanel({
           type="button"
           className="w-full flex items-center justify-between px-3 py-2 bg-black/5 text-xs font-semibold group"
         >
-          <span>{copy.gettingStarted.heading(doneCount, steps.length)}</span>
+          <span>{copy.gettingStarted.heading(completed, total)}</span>
           <ChevronUp className="size-3 transition-transform group-data-[state=closed]:rotate-180" />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col p-2 space-y-1.5 text-[11px] text-mist">
         {steps.map((step) => (
-          <GettingStartedRow key={step.id} step={step} />
+          <GettingStartedRow key={step.key} step={step} />
         ))}
         <div
           role="progressbar"
@@ -583,13 +579,10 @@ function GettingStartedPanel({
   );
 }
 
-function GettingStartedRow({
-  step,
-}: {
-  step: CompanyShellGettingStartedStep;
-}) {
-  const label = copy.gettingStarted.steps[step.id];
-  if (step.done) {
+function GettingStartedRow({ step }: { step: CompanyShellChecklistStep }) {
+  const label = copy.gettingStarted.steps[step.key];
+  const isDone = step.completedAt !== null;
+  if (isDone) {
     return (
       <div
         role="listitem"
