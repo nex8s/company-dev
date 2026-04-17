@@ -426,5 +426,27 @@ Test Files  1 passed (1)
 
 **Notes for next task (A-06):** Heartbeat / check-in system messages — extend Paperclip's run-status stream to emit "via check-in" system posts into the company chat thread on run-lifecycle events (error recovery, restart, retry). Blocked-by: A-03 (merged). This one likely needs to hook into Paperclip's existing `heartbeat_runs` / run lifecycle code; the hard rule is "no core edits", so I'll need to find an existing plugin hook or escalate. Will inspect `server/src/services/heartbeat.ts` and the plugin SDK's event contract before writing code.
 
+---
+
+## B-09 · 2026-04-17 05:15 · agent-B
+**Commit:** (pending push) on `feat/new-features`
+**Files:** packages/plugin-identity/package.json (new), tsconfig.json (new), vitest.config.ts (new), src/index.ts (new — `registerPlugin`), src/identity/{provider,mock,contract,index}.ts (new), src/identity/mock.contract.test.ts (new), .agents/company-dev/checks/gate-B-09.sh (new), pnpm-lock.yaml (workspace entry added).
+**Tests:** `mock.contract.test.ts` (11 tests via `runIdentityProviderContract("MockIdentityProvider", …)` + 3 mock-specific): response shape, round-trip, company filter, idempotency with key, no-dedup without key, state→jurisdiction, dissolve success, dissolve-unknown failure, stub-prefix ids, Delaware default, structured log events. All pass in 245ms.
+**Gate output (tail):**
+```
+> @paperclipai/plugin-identity@0.1.0 test:run
+> vitest run
+ RUN  v3.2.4 /Users/deusnexus/company-dev-b/packages/plugin-identity
+ ✓ src/identity/mock.contract.test.ts (11 tests) 4ms
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+▶ gate-B-09: all checks passed
+```
+**Full-repo checks:** `pnpm typecheck` green (exit 0). Full `pnpm test:run` NOT run in this session — user requested stop-for-token-save; the orchestrator will verify on a quiesced checkout.
+
+**Stray conflict marker on master:** `packages/db/src/migrations/meta/0058_snapshot.json` still contains `<<<<<<<` markers after the 09b8b800 master-fix. It doesn't affect TS build or runtime (snapshot JSON is only read by `drizzle-kit generate` at dev time), but the next agent who runs `drizzle-kit generate` will fail. No action taken in B-09 (not my file); flagging for awareness.
+
+**Notes for next task:** B-10/B-11/B-12 follow the same shape — `{Bank,Email,Browser}Provider` interface + `Mock*Provider` + `runXContract` reusable spec + `*.contract.test.ts`. Same package (plugin-identity/src/{bank,email,browser}/), same scaffolding. Should land quickly once resumed. Then C-09 (employee detail tabs) is unblocked.
+
 
 

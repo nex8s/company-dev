@@ -1,0 +1,23 @@
+{
+  "name": "@paperclipai/plugin-identity",
+  "version": "0.1.0",
+  "description": "Identity plugin — IdentityProvider / BankProvider / EmailProvider / BrowserProvider interfaces + Mock implementations (B-09..B-12)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./identity": "./src/identity/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test:run": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
