@@ -1023,3 +1023,62 @@ Tasks tests cover: 4-column render, header (filter tabs + New Task), the "stub �
 - **C-14** (brand swap): the final reskin — tokens + all `*.ts` copy files.
 
 **P2 tech debt unchanged:** vite main-chunk 3.3 MB warning. Slot before C-14 if still in the picture.
+
+---
+
+## C-12 · 2026-04-18 02:20 · agent-C
+**Commit:** 87adeab7 on `feat/frontend-port` (pushed)
+**Files:** `ui/src/api/plugin-connect-tools.ts`, `ui/src/api/plugin-dashboards.ts`, `ui/src/api/plugin-identity.ts` (+ domains methods), `ui/src/api/access.ts` (+ listCompanyMembers + CompanyMemberDto), `ui/src/copy/settings-subpages.ts`, `ui/src/lib/queryKeys.ts` (+ pluginConnectTools / pluginDashboards / companyAccess / pluginIdentity.domains), `ui/src/pages/company-tabs/Settings.tsx` (routes + QuickNavGrid wired), `ui/src/pages/company-tabs/settings/{SubpageShell,Domains,Connections,CustomDashboards,VirtualCardsAggregate,Team}.tsx`, `ui/src/pages/company-tabs/settings/settings-subpages.test.tsx`, `.agents/company-dev/checks/gate-C-12.sh`.
+
+**Gate:** 6/6 pass. Each of the 5 sub-pages live-wired:
+- Domains: list / add (hostname validation) / set-default / delete against B-15
+- Connections: list + adapter picker + connect form (token) + disconnect against B-14
+- Custom Dashboards: list + create (empty layout) + delete against A-08
+- Virtual Cards: aggregate fan-out via useQueries across non-CEO agents (B-13 is agent-scoped — no company-level list exists, so the page is read-only with deep-links to each agent's C-09 detail for issue/freeze)
+- Team: members + pending join requests (approve/reject) + invite-by-email (B-06 core routes)
+
+**Design notes:**
+1. `SubpageShell` shared chrome keeps the 5 pages visually consistent and the back-to-Settings link in one place.
+2. Virtual Cards page explicitly tells the user where issue/freeze lives (the agent detail page) rather than pretending a company-level endpoint exists. Clean, honest UI.
+3. The General panel's Quick Nav tiles (previously decorative buttons) now actually navigate. Test added to `settings-subpages.test.tsx`.
+
+---
+
+## C-13 · 2026-04-18 02:30 · agent-C
+**Commit:** cc2e7c6c on `feat/frontend-port` (pushed)
+**Files:** `tests/e2e-company-dev/playwright.config.ts`, `tests/e2e-company-dev/happy-path.spec.ts`, `tests/e2e-company-dev/README.md`, `package.json` (+ 2 scripts), `.agents/company-dev/checks/gate-C-13.sh`.
+
+**Gate:** Harness scaffolded. Verifies:
+- All 3 harness files exist
+- Config calls `defineConfig` + has a `webServer` block
+- Spec imports `@playwright/test` and declares at least one test
+- `package.json` wires `test:e2e-company-dev` + `:headed`
+- Spec references the 5 key data-testids from C-03..C-12 (company-sidebar, app-detail, upgrade-view, subscribe-starter, settings-server) — catches a rename regression without running a browser.
+
+The full browser flow runs on its own port (`3299`) with a temp `PAPERCLIP_HOME`. LLM steps gated by `COMPANY_DEV_E2E_SKIP_LLM`; Stripe redirect gated by `STRIPE_PRICE_STARTER` presence. The gate doesn't execute the flow — that's a Phase 2 verification requiring a live server + API keys, which is out of scope for Phase 1 shipping. Documented in `tests/e2e-company-dev/README.md`.
+
+**Flag for orchestrator:** the `test:e2e-company-dev` script hasn't been added to any CI workflow. Post-merge, whoever owns CI should decide whether to (a) run it in a nightly job with the ANTHROPIC_API_KEY secret or (b) leave it manual-only. Suggest (a) once Stripe test keys are added.
+
+---
+
+## C-14 · 2026-04-18 14:58 · agent-C
+**Commit:** a5645570 on `feat/frontend-port` (pushed)
+**Files:** `ui/src/hooks/useEmployeeDetailData.ts` (3 email-domain swaps), `packages/plugin-identity/src/email/mock.ts` (1 comment), `docs/company-dev/PROVIDER_INTERFACES.md` (2 swaps), `docs/company-dev/FEATURE_MAPPING.md` (1 swap — Store templates row), `.agents/company-dev/checks/gate-C-14.sh`.
+
+**Gate:** zero reference-brand hits across `ui/ server/ docs/company-dev/ packages/` (excluding NOTICE.md, ui-import/ which is the frozen reference prototype, and .agents/company-dev/log.md which is append-only history). Scans 4 patterns: diacritical `Naïve` (case-insensitive), `usenaive`, `.naive.ai`, `naive-style`. Also positively asserts Company.dev appears in NOTICE and in ui/src/copy/, and CEO_DEFAULT_NAME is still "Naive" (the agent display name — intentionally preserved; not the brand).
+
+**Full UI test suite:** 98/98 files, 567/567 tests pass (15s). Full repo `pnpm typecheck` green.
+
+**Swap rules** (documented in gate-C-14.sh):
+- `Naïve` (diacritical) = the reference brand → replace with `Company.dev`
+- `Naive` (ASCII) = the default CEO agent's display name → intentionally preserved
+- `usenaive` / `.naive.ai` / `naive-style` (lowercased URL/domain patterns that carried the old brand) → replaced with `company.dev` / `usecompanydev.com` equivalents
+
+**Phase 1 is feature-complete.** All 14 C-tasks landed. 5 remaining pieces for Phase 2 verification (not Phase 1 shipping):
+1. Playwright happy-path run in CI with ANTHROPIC_API_KEY
+2. Stripe test-mode keys wired in CI so the subscribe-redirect assertion runs
+3. Live `GET /plugin-drive/files` endpoint (no A-task allocated yet — flagged in C-07 log)
+4. Live `GET /plugin-store/templates` + `POST /plugin-store/install` (flagged in C-08 log)
+5. Bundle-split the 3.3 MB vite main chunk (P2 tech debt, pre-existing)
+
+Ship it.
