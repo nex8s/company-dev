@@ -58,7 +58,7 @@ export function CompanySettingsTab() {
           <Route path="billing" element={<SettingsPlaceholder tab="billing" task="B-07" />} />
           <Route path="team" element={<SettingsTeam />} />
           <Route path="usage" element={<SettingsPlaceholder tab="usage" task="A-07" />} />
-          <Route path="server" element={<SettingsPlaceholder tab="server" task="A-09" />} />
+          <Route path="server" element={<SettingsServer />} />
           <Route path="publishing" element={<SettingsPlaceholder tab="publishing" task="B-10" />} />
           {/* C-12 sub-pages — not part of the inner tab strip, reached
               from the General quick-nav tiles. */}
@@ -305,6 +305,49 @@ function DangerZone({ companyName }: { companyName: string }) {
         </button>
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Settings > Server (matches usenaive.ai "Not Provisioned" initial state)
+// ---------------------------------------------------------------------------
+
+function SettingsServer() {
+  return (
+    <div data-testid="settings-server" className="space-y-6">
+      <div className="bg-white border border-hairline rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-lg bg-cream border border-hairline flex items-center justify-center">
+            <svg className="w-5 h-5 text-mist" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l1.587 2.45a4.5 4.5 0 01.9 2.7" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium">Server Status</h3>
+            <p className="text-xs text-mist mt-0.5">No server has been set up yet.</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-mist">
+            <span className="w-2 h-2 rounded-full bg-mist/40" />
+            Not Provisioned
+          </div>
+        </div>
+        <div className="border-t border-hairline mt-4 pt-4 flex items-center gap-3">
+          <button className="bg-ink text-white hover:bg-ink/90 px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+            </svg>
+            Start Server
+          </button>
+          <span className="text-xs text-mist flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Loading status…
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 

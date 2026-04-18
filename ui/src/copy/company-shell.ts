@@ -14,7 +14,7 @@ export const companyShell = {
   reviewPill: {
     summary: (count: number) =>
       count === 1 ? "1 review waiting" : `${count} reviews waiting`,
-    none: "No reviews pending",
+    none: "Everything clear",
     tabs: {
       tasks: "Tasks",
       agents: "Agents",

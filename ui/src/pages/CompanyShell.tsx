@@ -210,7 +210,19 @@ function Sidebar({
         />
       </div>
 
-      <div className="px-3 mt-1">
+      <div className="px-3 mt-1 space-y-1.5">
+        {data.ceo.statusLabel !== "Idle" && (
+          <div className="w-full bg-black text-white rounded-full py-1.5 px-3 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-gray-600 border border-black flex items-center justify-center text-[8px]">N</span>
+              <span>Naive is working</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <ChevronUp className="size-3" />
+            </span>
+          </div>
+        )}
         <ReviewPill pending={data.pendingReviews} />
       </div>
 
@@ -325,17 +337,21 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
         <button
           type="button"
           aria-label={summary}
-          className="w-full bg-black text-white rounded-full py-1.5 px-3 flex items-center justify-between text-xs hover:bg-neutral-800 transition-colors"
+          className={`w-full rounded-full py-1.5 px-3 flex items-center justify-between text-xs transition-colors ${
+            count > 0
+              ? "bg-black text-white hover:bg-neutral-800"
+              : "bg-black text-white hover:bg-neutral-800"
+          }`}
         >
           <span className="flex items-center gap-2">
             <span className="flex -space-x-1">
               <span className="w-4 h-4 rounded-full bg-gray-200 border border-black" />
               <span className="w-4 h-4 rounded-full bg-gray-300 border border-black" />
             </span>
-            <span>+{Math.max(count - 1, 0)}</span>
+            {count > 0 && <span>+{Math.max(count - 1, 0)}</span>}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className={`w-1.5 h-1.5 rounded-full ${count > 0 ? "bg-amber-400" : "bg-green-400"}`} />
             <span className="opacity-90">{summary}</span>
             <ChevronUp className="size-3" />
           </span>
@@ -565,7 +581,9 @@ function TeamSection({
             {ceo.displayName} {copy.sections.ceoSuffix}
           </span>
         </span>
-        <span className="text-[10px] text-mist">{ceo.updatedAgo}</span>
+        <span className="text-[10px] text-mist">
+          {ceo.statusLabel === "Idle" ? ceo.updatedAgo : "Your AI CEO"}
+        </span>
       </button>
 
       {departments.map((dept) => (
