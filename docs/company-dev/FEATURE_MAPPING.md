@@ -19,7 +19,7 @@ Every view from the prototype (`ui-import/landing.html`, `ui-import/dashboard.ht
 | Company > Settings > Publishing (Publish Single Agent / Publish Entire Company) | `…/settings/publishing` | — | plugin-store (publishing bridge) | C-05, A-10, B-06 |
 | Tasks (kanban Needs Review / In Progress / Queued / Completed) | `…/tasks` | tickets | plugin-company (review actions) | C-06, A-05 |
 | Drive (files, tabs by dept, Pending) | `…/drive` | attachments | plugin-apps-builder (agent-authored files) | C-07, B-02 |
-| Store (Naïve Templates — Featured grid, business categories, employee departments) | `…/store` | — | plugin-store | C-08, B-04, B-05 |
+| Store (Company.dev Templates — Featured grid, business categories, employee departments) | `…/store` | — | plugin-store | C-08, B-04, B-05 |
 | Upgrade page (Free / Starter / Pro + Pay-as-you-go) | `/upgrade` | — | plugin-payments | C-11, B-07 |
 | Top-up credits modal (20 / 50 / 100 / 250) | `/upgrade` overlay | — | plugin-payments | C-11, B-07 |
 | Team > Naive [CEO] > Profile (Identity, Compute, Recursive Intelligence) | `…/team/:agentId` | agents | Port + plugin-identity (email/phone/legal entity) | C-09, A-03, B-09, B-11 |

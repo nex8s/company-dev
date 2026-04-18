@@ -158,4 +158,24 @@ export const accessApi = {
 
   cancelCliAuthChallenge: (id: string, token: string) =>
     api.post<{ cancelled: boolean; status: string }>(`/cli-auth/challenges/${id}/cancel`, { token }),
+
+  /**
+   * B-06 company members — GET `/companies/:companyId/members`. Response
+   * is the list from `accessRoutes` in `server/src/routes/access.ts`;
+   * we leave the element as `unknown` here so individual Settings
+   * sub-pages project only the fields they use.
+   */
+  listCompanyMembers: (companyId: string) =>
+    api.get<CompanyMemberDto[]>(`/companies/${companyId}/members`),
 };
+
+export interface CompanyMemberDto {
+  readonly id: string;
+  readonly userId: string | null;
+  readonly agentId: string | null;
+  readonly displayName: string;
+  readonly email: string | null;
+  readonly memberType: "human" | "agent" | string;
+  readonly joinedAt: string;
+  readonly grants?: readonly string[];
+}

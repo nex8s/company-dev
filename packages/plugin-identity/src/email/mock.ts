@@ -21,7 +21,7 @@ export type MockEmailProviderOptions = {
   log?: (event: MockEmailLogEvent) => void;
   /**
    * Default sending domain when `provisionInbox` is called without an explicit
-   * `domain`. Mirrors the "test-subdomain under usenaive-style namespace"
+   * `domain`. Mirrors the "test-subdomain under the Company.dev namespace"
    * behaviour described in PROVIDER_INTERFACES.md.
    */
   defaultDomain?: string;

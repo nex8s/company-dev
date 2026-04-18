@@ -1,6 +1,6 @@
 # Company.dev — Provider Interfaces
 
-Every "real-world" primitive Naïve exposes (LLC formation, bank account, email inbox, browser session) is abstracted behind a TypeScript interface. Phase 1 ships Mock implementations; Phase 2 swaps in real providers without changing call sites.
+Every "real-world" primitive Company.dev exposes (LLC formation, bank account, email inbox, browser session) is abstracted behind a TypeScript interface. Phase 1 ships Mock implementations; Phase 2 swaps in real providers without changing call sites.
 
 Rule: **no business logic may reach for a real-world provider directly.** All access goes through these interfaces, which in turn dispatch to the configured implementation (via `COMPANY_IDENTITY_PROVIDER=mock|stripe-atlas|firstbase` etc).
 
@@ -78,7 +78,7 @@ export interface EmailProvider {
   provisionInbox(input: {
     companyId: string;
     agentId: string;
-    domain?: string;        // defaults to company's test-subdomain under usenaive-style namespace
+    domain?: string;        // defaults to company's test-subdomain under the Company.dev namespace
     localPart?: string;     // defaults to agent slug
   }): Promise<AgentInbox>;
 
