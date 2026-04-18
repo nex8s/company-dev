@@ -14,5 +14,4 @@ export type {
 } from "./provider.js";
 export { MockEmailProvider } from "./mock.js";
 export type { MockEmailLogEvent, MockEmailProviderOptions } from "./mock.js";
-export { runEmailProviderContract } from "./contract.js";
 export type { EmailProviderFactory } from "./contract.js";

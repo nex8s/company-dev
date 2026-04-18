@@ -15,9 +15,6 @@ export type {
   MockIdentityLogEvent,
   MockIdentityProviderOptions,
 } from "./mock.js";
-export {
-  runIdentityProviderContract,
-} from "./contract.js";
 export type {
   IdentityProviderFactory,
 } from "./contract.js";

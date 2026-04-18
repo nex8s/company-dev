@@ -13,5 +13,4 @@ export type {
   MockBrowserLogEvent,
   MockBrowserProviderOptions,
 } from "./mock.js";
-export { runBrowserProviderContract } from "./contract.js";
 export type { BrowserProviderFactory } from "./contract.js";
