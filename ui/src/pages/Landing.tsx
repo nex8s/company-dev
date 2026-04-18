@@ -96,7 +96,7 @@ function Header() {
           {landing.auth.logIn}
         </a>
         <a
-          href="#"
+          href="/start"
           className="px-5 py-2 text-[14px] font-medium border border-black bg-black text-white rounded-full hover:bg-neutral-900 transition-colors"
         >
           {landing.auth.getStarted}

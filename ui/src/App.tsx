@@ -46,6 +46,7 @@ import { BoardClaimPage } from "./pages/BoardClaim";
 import { CliAuthPage } from "./pages/CliAuth";
 import { InviteLandingPage } from "./pages/InviteLanding";
 import { Landing } from "./pages/Landing";
+import { Onboarding as CompanyDevOnboarding } from "./pages/Onboarding";
 import { NotFoundPage } from "./pages/NotFound";
 import { queryKeys } from "./lib/queryKeys";
 import { useCompany } from "./context/CompanyContext";
@@ -315,6 +316,7 @@ export function App() {
     <>
       <Routes>
         <Route index element={<Landing />} />
+        <Route path="start" element={<CompanyDevOnboarding />} />
         <Route path="auth" element={<AuthPage />} />
         <Route path="board-claim/:token" element={<BoardClaimPage />} />
         <Route path="cli-auth/:id" element={<CliAuthPage />} />
