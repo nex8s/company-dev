@@ -139,7 +139,7 @@ function buildComputeStub(isCeo: boolean): ComputeData {
 function buildInboxStub(agent: EmployeeAgent): InboxData {
   const slug = agent.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return {
-    address: `${slug}@test-bff5c2.usenaive.ai`,
+    address: `${slug}@test-bff5c2.usecompanydev.com`,
     messages: [],
   };
 }
@@ -171,7 +171,7 @@ export function findEmployeeAgent(
       isCeo: true,
       description:
         "Company strategist. Handles all user communication, delegates tasks, reviews work, maintains strategy.",
-      email: `${shell.ceo.displayName.toLowerCase()}@${shell.company.id}.naive.ai`,
+      email: `${shell.ceo.displayName.toLowerCase()}@${shell.company.id}.company.dev`,
       phone: null,
       legalEntity: `${shell.company.name} Ops [LLC]`,
     };
@@ -186,7 +186,7 @@ export function findEmployeeAgent(
         statusLabel: hit.statusLabel,
         isCeo: false,
         description: deptDescription(dept.department),
-        email: `${hit.id}@${shell.company.id}.naive.ai`,
+        email: `${hit.id}@${shell.company.id}.company.dev`,
         phone: null,
         legalEntity: null,
       };
