@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Plus } from "lucide-react";
 import { useParams } from "@/lib/router";
 import { companyTasks as copy } from "@/copy/company-tasks";
@@ -7,21 +8,6 @@ import {
   type KanbanColumn,
 } from "@/hooks/useCompanyTasksData";
 
-/**
- * Company > Tasks (kanban) — C-06. Sibling top-level view to the Company
- * sub-tabs (Chat / Overview / Strategy / Payments / Settings); reached
- * from the sidebar Tasks nav item, NOT the breadcrumb.
- *
- * Needs Review is wired live to A-06.5's pending-reviews endpoint via
- * `useCompanyTasksData`. The other three columns are typed-mock stubs
- * flagged with the A-08 swap point in the hook.
- *
- * Filter tabs (All / Active / Backlog / Done) and the New Task CTA are
- * rendered to match `ui-import/dashboard.html` line ~960. Filter logic
- * lands when A-08's status enum stabilizes; today they're decorative
- * and Approve/Reject are the only interactive controls.
- */
-
 const COLUMN_DEFS = [
   { id: "needsReview", labelKey: "needsReview", dotClass: "bg-amber-400" },
   { id: "inProgress", labelKey: "inProgress", dotClass: "bg-blue-500" },
@@ -29,28 +15,66 @@ const COLUMN_DEFS = [
   { id: "completed", labelKey: "completed", dotClass: "bg-emerald-500" },
 ] as const;
 
-const FILTER_DEFS = [
-  { id: "all", labelKey: "all" as const },
-  { id: "active", labelKey: "active" as const },
-  { id: "backlog", labelKey: "backlog" as const },
-  { id: "done", labelKey: "done" as const },
-] as const;
+type FilterId = "all" | "active" | "backlog" | "done";
+
+const FILTER_DEFS: { id: FilterId; labelKey: "all" | "active" | "backlog" | "done" }[] = [
+  { id: "all", labelKey: "all" },
+  { id: "active", labelKey: "active" },
+  { id: "backlog", labelKey: "backlog" },
+  { id: "done", labelKey: "done" },
+];
+
+// Map filter → which kanban column IDs to show
+const FILTER_TO_COLUMNS: Record<FilterId, string[]> = {
+  all: ["needsReview", "inProgress", "queued", "completed"],
+  active: ["needsReview", "inProgress"],
+  backlog: ["queued"],
+  done: ["completed"],
+};
 
 export function CompanyTasks() {
   const { companyId = "" } = useParams<{ companyId: string }>();
   const { columns, approveReview, rejectReview } = useCompanyTasksData(companyId);
+  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+
+  const visibleColumns = columns.filter((col) =>
+    FILTER_TO_COLUMNS[activeFilter].includes(col.id),
+  );
+
+  const handleNewTask = useCallback(async () => {
+    const title = prompt("Task title:");
+    if (!title?.trim()) return;
+    try {
+      await fetch(`/api/companies/${companyId}/issues`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          status: "backlog",
+        }),
+      });
+      // Refetch — the hook polls, but force immediate
+      window.location.reload();
+    } catch {
+      alert("Failed to create task");
+    }
+  }, [companyId]);
 
   return (
     <div
       data-testid="company-tasks"
       className="flex-1 flex flex-col h-full bg-cream/40 overflow-hidden"
     >
-      <Header />
+      <Header
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        onNewTask={handleNewTask}
+      />
       <div
         data-testid="kanban-board"
         className="flex-1 overflow-x-auto p-6 flex items-start gap-4"
       >
-        {columns.map((col) => {
+        {visibleColumns.map((col) => {
           const def = COLUMN_DEFS.find((d) => d.id === col.id)!;
           return (
             <Column
@@ -74,21 +98,30 @@ export default CompanyTasks;
 // Header — filter tabs + New Task CTA
 // ---------------------------------------------------------------------------
 
-function Header() {
+function Header({
+  activeFilter,
+  onFilterChange,
+  onNewTask,
+}: {
+  activeFilter: FilterId;
+  onFilterChange: (f: FilterId) => void;
+  onNewTask: () => void;
+}) {
   return (
     <header
       data-testid="tasks-header"
       className="h-14 border-b border-hairline flex items-center justify-between px-6 bg-white shrink-0"
     >
       <nav aria-label="Task filters" className="flex items-center gap-6 h-full">
-        {FILTER_DEFS.map((f, i) => (
+        {FILTER_DEFS.map((f) => (
           <button
             key={f.id}
             type="button"
             data-filter={f.id}
-            aria-current={i === 0 ? "page" : undefined}
+            aria-current={activeFilter === f.id ? "page" : undefined}
+            onClick={() => onFilterChange(f.id)}
             className={`h-full px-1 border-b-2 font-medium text-sm transition-colors ${
-              i === 0
+              activeFilter === f.id
                 ? "border-ink text-ink"
                 : "border-transparent text-mist hover:text-ink"
             }`}
@@ -99,6 +132,7 @@ function Header() {
       </nav>
       <button
         type="button"
+        onClick={onNewTask}
         className="bg-black text-white hover:bg-neutral-800 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
       >
         <Plus className="size-3" strokeWidth={2.5} /> {copy.header.newTaskCta}
@@ -130,9 +164,7 @@ function Column({
   return (
     <div
       data-testid={`kanban-column-${column.id}`}
-      className={`w-80 shrink-0 flex flex-col max-h-full ${
-        column.isStub ? "opacity-70" : ""
-      }`}
+      className="w-80 shrink-0 flex flex-col max-h-full"
     >
       <div className="flex items-center justify-between mb-3 px-1">
         <span className="text-xs font-semibold text-mist flex items-center gap-2 uppercase">
@@ -141,14 +173,6 @@ function Column({
           <span className="bg-black/5 text-ink px-1.5 rounded normal-case">
             {column.cards.length}
           </span>
-          {column.isStub && (
-            <span
-              data-testid={`stub-badge-${column.id}`}
-              className="ml-1 text-[9px] text-mist border border-hairline rounded px-1.5 py-0.5 normal-case font-normal"
-            >
-              {copy.stubBadge}
-            </span>
-          )}
         </span>
       </div>
 
@@ -185,12 +209,7 @@ function EmptyColumn({ message }: { message: string }) {
 
 function ColumnSkeleton({ testId }: { testId: string }) {
   return (
-    <div
-      data-testid={testId}
-      role="status"
-      aria-busy="true"
-      className="space-y-3"
-    >
+    <div data-testid={testId} role="status" aria-busy="true" className="space-y-3">
       <div className="h-24 bg-white border border-hairline rounded-xl animate-pulse" />
       <div className="h-24 bg-white border border-hairline rounded-xl animate-pulse" />
     </div>
@@ -199,11 +218,7 @@ function ColumnSkeleton({ testId }: { testId: string }) {
 
 function ColumnError({ testId, message }: { testId: string; message: string }) {
   return (
-    <div
-      data-testid={testId}
-      role="alert"
-      className="h-24 border-2 border-dashed border-red-200 bg-red-50 rounded-xl flex items-center justify-center text-xs text-red-700 px-4 text-center"
-    >
+    <div data-testid={testId} role="alert" className="h-24 border-2 border-dashed border-red-200 bg-red-50 rounded-xl flex items-center justify-center text-xs text-red-700 px-4 text-center">
       {message}
     </div>
   );
