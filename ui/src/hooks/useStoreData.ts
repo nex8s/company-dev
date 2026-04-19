@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import type {
@@ -195,9 +195,27 @@ export function useStoreData({
   category,
   onInstalled,
 }: UseStoreDataOptions): StoreData {
-  // No useQuery here yet — the data is local. When HTTP lands, replace
-  // this useMemo + the install call below per the file header.
-  const templates = MOCK_TEMPLATES;
+  // Try real API first, fall back to mock templates
+  const [templates, setTemplates] = useState<readonly StoreTemplateDto[]>(MOCK_TEMPLATES);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Try the plugin-store API
+        const res = await fetch("/api/plugin-store/templates");
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && Array.isArray(data) && data.length > 0) {
+            setTemplates(data);
+          }
+        }
+      } catch {}
+      if (!cancelled) setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const visibleTemplates = useMemo(() => {
     return templates.filter((t) => {
@@ -218,7 +236,7 @@ export function useStoreData({
   return {
     templates,
     visibleTemplates,
-    isLoading: false,
+    isLoading,
     error: null,
     install,
   };

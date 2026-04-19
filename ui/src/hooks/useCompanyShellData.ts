@@ -1,11 +1,9 @@
 /**
- * Single-hook facade for every piece of data the C-03 company shell needs.
- *
- * Today this returns hand-written mocks so the shell can render + be tested
- * in isolation. Every field is marked with the task that will swap it to a
- * live query. When those tasks merge, replace each block with `useQuery`
- * against the corresponding endpoint and delete the mock.
+ * Company shell data — fetches from real Paperclip + plugin-company APIs.
+ * Replaces the mock-seam hook that C-03 shipped.
  */
+
+import { useEffect, useState } from "react";
 
 export type TrialState = "trial" | "active" | "expired" | "paused";
 
@@ -25,7 +23,6 @@ export interface CompanyShellAgent {
 }
 
 export interface CompanyShellDeptGroup {
-  /** One of the HIREABLE_DEPARTMENTS from @paperclipai/plugin-company. */
   department: "engineering" | "marketing" | "operations" | "sales" | "support";
   count: number;
   hasReviewPending: boolean;
@@ -47,14 +44,6 @@ export interface CompanyShellPendingReview {
   kind: "review" | "todo";
 }
 
-/**
- * Step keys + shape mirror `@paperclipai/plugin-company`'s
- * GETTING_STARTED_STEPS / ChecklistStep / Checklist contract exactly.
- * When Agent A adds the `GET /api/companies/:companyId/getting-started`
- * HTTP route, the `gettingStarted` field on CompanyShellData becomes a
- * 1-line useQuery swap — the component code is already coded against
- * this shape.
- */
 export type CompanyShellStepKey =
   | "incorporate"
   | "domain"
@@ -97,144 +86,212 @@ export interface CompanyShellData {
   error: Error | null;
 }
 
-// TODO(A-02 HTTP): swap for `useQuery(plugin-company.listCompanies(userId))`.
-const MOCK_COMPANIES: CompanyShellCompany[] = [
-  { id: "company-x", name: "Company X", icon: "🏢", trialState: "trial", trialDaysLeft: 5 },
-];
+// ---------------------------------------------------------------------------
+// Defaults (shown while loading)
+// ---------------------------------------------------------------------------
 
-// TODO(A-03 HTTP): swap for `useQuery(plugin-company.findCeo(companyId))`.
-const MOCK_CEO: CompanyShellAgent = {
-  id: "agent-ceo",
+const EMPTY_COMPANY: CompanyShellCompany = {
+  id: "",
+  name: "Loading…",
+  icon: "🏢",
+  trialState: "trial",
+  trialDaysLeft: 5,
+};
+
+const EMPTY_CEO: CompanyShellAgent = {
+  id: "",
   displayName: "Naive",
   statusLabel: "Idle",
-  updatedAgo: "2d",
+  updatedAgo: "",
 };
 
-// TODO(A-03 HTTP): swap for `useQuery(plugin-company.listAgents(companyId))`
-// keyed by department — reuses the HIREABLE_DEPARTMENTS contract.
-const MOCK_DEPARTMENTS: CompanyShellDeptGroup[] = [
-  {
-    department: "engineering",
-    count: 1,
-    hasReviewPending: false,
-    agents: [
-      { id: "agent-lpe", displayName: "Landing Page Engineer", statusLabel: "Deploying", updatedAgo: "2d" },
-    ],
-  },
-  {
-    department: "marketing",
-    count: 2,
-    hasReviewPending: true,
-    agents: [
-      { id: "agent-gm", displayName: "Growth Marketer", statusLabel: "Drafting GTM plan", updatedAgo: "15m" },
-    ],
-  },
-  {
-    department: "operations",
-    count: 1,
-    hasReviewPending: false,
-    agents: [
-      { id: "agent-fl", displayName: "Finance & Legal Officer", statusLabel: "Idle", updatedAgo: "1d" },
-    ],
-  },
-  {
-    department: "sales",
-    count: 1,
-    hasReviewPending: false,
-    agents: [
-      { id: "agent-sl", displayName: "Sales Lead", statusLabel: "Idle", updatedAgo: "1d" },
-    ],
-  },
-  {
-    department: "support",
-    count: 1,
-    hasReviewPending: false,
-    agents: [
-      { id: "agent-cs", displayName: "Customer Support", statusLabel: "Idle", updatedAgo: "3d" },
-    ],
-  },
-];
-
-// TODO(B-02 HTTP): swap for `useQuery(plugin-apps-builder.listApps(companyId))`.
-const MOCK_APPS: CompanyShellApp[] = [
-  { id: "app-landing", name: "Landing Page", productionDomain: "landing-page.vercel.app" },
-];
-
-// TODO(A-05 HTTP): swap for `useQuery(plugin-company.listPendingReviews(companyId))`.
-// A-05 gate: submit a task as pending → appears here; approve removes it.
-const MOCK_PENDING_REVIEWS: CompanyShellPendingReview[] = [
-  {
-    id: "pr-1",
-    identifier: "COMPANY-1",
-    title: "Create Content Calendar",
-    subtitle: "Review · Growth Marketer",
-    actor: "Growth Marketer",
-    kind: "review",
-  },
-];
-
-// TODO(A-04 HTTP): swap this block for a React-Query call once Agent A adds
-// `GET /api/companies/:companyId/getting-started`. Response body is exactly
-// CompanyShellChecklist (wire-compatible with plugin-company's Checklist).
-// Keeping "deploy_first_app" as the single completed step matches the
-// prototype's 1/7 preview.
-const MOCK_CHECKLIST_TITLES: Record<CompanyShellStepKey, string> = {
-  incorporate: "Incorporate",
-  domain: "Domain",
-  email_inboxes: "Email inboxes",
-  stripe_billing: "Stripe billing",
-  deploy_first_app: "Deploy first app",
-  google_search_console: "Google Search Console",
-  custom_dashboard_pages: "Custom dashboard pages",
+const EMPTY_CHECKLIST: CompanyShellChecklist = {
+  companyId: "",
+  completed: 0,
+  total: 7,
+  steps: [],
 };
-const MOCK_CHECKLIST_STEP_KEYS: readonly CompanyShellStepKey[] = [
-  "incorporate",
-  "domain",
-  "email_inboxes",
-  "stripe_billing",
-  "deploy_first_app",
-  "google_search_console",
-  "custom_dashboard_pages",
-] as const;
-function buildMockChecklist(companyId: string): CompanyShellChecklist {
-  const steps = MOCK_CHECKLIST_STEP_KEYS.map<CompanyShellChecklistStep>((key) => ({
-    key,
-    title: MOCK_CHECKLIST_TITLES[key],
-    completedAt:
-      key === "deploy_first_app" ? new Date("2026-04-16T20:00:00Z") : null,
-  }));
-  const completed = steps.filter((s) => s.completedAt !== null).length;
-  return { companyId, completed, total: steps.length, steps };
+
+const EMPTY_USER: CompanyShellUser = {
+  fullName: "User",
+  email: "",
+  initials: "U",
+  credits: 0,
+};
+
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
+
+async function fetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
-// TODO(Paperclip auth): swap for the existing `authApi.getSession` query
-// already wired in App.tsx's CloudAccessGate — once the shell mounts behind
-// the gate this becomes useQuery(queryKeys.auth.session) + budget fetch.
-const MOCK_USER: CompanyShellUser = {
-  fullName: "Nicole Mayer",
-  email: "nicolemayerwork@gmail.com",
-  initials: "NI",
-  credits: 15.25,
-};
+function timeAgo(date: string | Date): string {
+  const ms = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
-/**
- * Build the shell data view for a given company. All returned values are
- * stable references so React re-renders cheaply; when swapping to
- * useQuery, preserve that by passing `placeholderData` or memoising.
- */
+const DEPT_ORDER: CompanyShellDeptGroup["department"][] = [
+  "engineering", "marketing", "operations", "sales", "support",
+];
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 export function useCompanyShellData(companyId: string): CompanyShellData {
-  const company =
-    MOCK_COMPANIES.find((c) => c.id === companyId) ?? MOCK_COMPANIES[0];
-  return {
-    company,
-    companies: MOCK_COMPANIES,
-    ceo: MOCK_CEO,
-    departments: MOCK_DEPARTMENTS,
-    apps: MOCK_APPS,
-    pendingReviews: MOCK_PENDING_REVIEWS,
-    gettingStarted: buildMockChecklist(company.id),
-    user: MOCK_USER,
-    isLoading: false,
+  const [data, setData] = useState<CompanyShellData>({
+    company: { ...EMPTY_COMPANY, id: companyId },
+    companies: [],
+    ceo: EMPTY_CEO,
+    departments: DEPT_ORDER.map((d) => ({ department: d, count: 0, hasReviewPending: false, agents: [] })),
+    apps: [],
+    pendingReviews: [],
+    gettingStarted: EMPTY_CHECKLIST,
+    user: EMPTY_USER,
+    isLoading: true,
     error: null,
-  };
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      // Fetch in parallel
+      const [companiesRaw, companyRaw, agentsRaw, checklistRaw, reviewsRaw, appsRaw, sessionRaw] =
+        await Promise.all([
+          fetchJson<any[]>("/api/companies"),
+          fetchJson<any>(`/api/companies/${companyId}`),
+          fetchJson<any[]>(`/api/companies/${companyId}/agents`),
+          fetchJson<any>(`/api/companies/${companyId}/plugin-company/checklist`),
+          fetchJson<any>(`/api/companies/${companyId}/plugin-company/reviews/pending`),
+          fetchJson<any[]>(`/api/companies/${companyId}/plugin-apps-builder/apps`).catch(() => null),
+          fetchJson<any>("/api/auth/get-session"),
+        ]);
+
+      if (cancelled) return;
+
+      // Companies
+      const companies: CompanyShellCompany[] = (companiesRaw ?? [])
+        .filter((c: any) => c.status === "active")
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name || "Unnamed",
+          icon: "🏢",
+          trialState: "trial" as TrialState,
+          trialDaysLeft: 5,
+        }));
+
+      // Current company
+      const company: CompanyShellCompany = companyRaw
+        ? { id: companyRaw.id, name: companyRaw.name, icon: "🏢", trialState: "trial", trialDaysLeft: 5 }
+        : companies.find((c) => c.id === companyId) ?? { ...EMPTY_COMPANY, id: companyId };
+
+      // Agents → CEO + departments
+      const agents: any[] = agentsRaw ?? [];
+      const ceoAgent = agents.find((a) => a.role === "ceo" || a.name?.toLowerCase() === "naive");
+      const ceo: CompanyShellAgent = ceoAgent
+        ? { id: ceoAgent.id, displayName: ceoAgent.name, statusLabel: ceoAgent.status === "active" ? "Working" : "Idle", updatedAgo: timeAgo(ceoAgent.updatedAt || ceoAgent.createdAt) }
+        : EMPTY_CEO;
+
+      const departments: CompanyShellDeptGroup[] = DEPT_ORDER.map((dept) => {
+        const deptAgents = agents.filter((a) =>
+          a.role === dept ||
+          a.runtimeConfig?.department === dept ||
+          a.metadata?.department === dept
+        );
+        return {
+          department: dept,
+          count: deptAgents.length,
+          hasReviewPending: false,
+          agents: deptAgents.map((a: any) => ({
+            id: a.id,
+            displayName: a.name,
+            statusLabel: a.status === "active" ? "Working" : "Idle",
+            updatedAgo: timeAgo(a.updatedAt || a.createdAt),
+          })),
+        };
+      });
+
+      // Apps
+      const apps: CompanyShellApp[] = (appsRaw ?? []).map((a: any) => ({
+        id: a.id,
+        name: a.name || "App",
+        productionDomain: a.productionDomain || a.domain || null,
+      }));
+
+      // Checklist
+      const gettingStarted: CompanyShellChecklist = checklistRaw
+        ? {
+            companyId: checklistRaw.companyId || companyId,
+            completed: checklistRaw.completed ?? 0,
+            total: checklistRaw.total ?? 7,
+            steps: (checklistRaw.steps ?? []).map((s: any) => ({
+              key: s.key,
+              title: s.title || s.key,
+              completedAt: s.completedAt ? new Date(s.completedAt) : null,
+            })),
+          }
+        : EMPTY_CHECKLIST;
+
+      // Reviews
+      const reviewsArray = reviewsRaw?.reviews ?? reviewsRaw ?? [];
+      const pendingReviews: CompanyShellPendingReview[] = (Array.isArray(reviewsArray) ? reviewsArray : []).map(
+        (r: any) => ({
+          id: r.id || r.review?.id || "",
+          identifier: r.identifier || r.issue?.issuePrefix || "",
+          title: r.title || r.issue?.title || "Review",
+          subtitle: r.subtitle || "",
+          actor: r.actor || r.submittedByAgentName || "",
+          kind: "review" as const,
+        }),
+      );
+
+      // User
+      const user: CompanyShellUser = sessionRaw?.user
+        ? {
+            fullName: sessionRaw.user.name || sessionRaw.user.email || "User",
+            email: sessionRaw.user.email || "",
+            initials: (sessionRaw.user.name || sessionRaw.user.email || "U").slice(0, 2).toUpperCase(),
+            credits: 15.25, // TODO: fetch from plugin-payments credit balance
+          }
+        : EMPTY_USER;
+
+      setData({
+        company,
+        companies,
+        ceo,
+        departments,
+        apps,
+        pendingReviews,
+        gettingStarted,
+        user,
+        isLoading: false,
+        error: null,
+      });
+    }
+
+    load().catch((err) => {
+      if (!cancelled) {
+        setData((prev) => ({ ...prev, isLoading: false, error: err }));
+      }
+    });
+
+    // Poll every 5s for updates
+    const interval = setInterval(() => { load(); }, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [companyId]);
+
+  return data;
 }

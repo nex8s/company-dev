@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /**
  * Single-hook facade for the Company > Overview / Strategy / Payments /
  * Settings tabs (C-05). Mirrors the seam pattern established in C-03's
@@ -194,12 +196,96 @@ const MOCK_SETTINGS: SettingsGeneralData = {
  * and one error across the panel set so the tab implementations stay thin
  * and the A-02 / A-07 / B-07 swaps land in one place.
  */
-export function useCompanyTabsData(_companyId: string): CompanyTabsData {
-  return {
+export function useCompanyTabsData(companyId: string): CompanyTabsData {
+  const [data, setData] = useState<CompanyTabsData>({
     overview: MOCK_OVERVIEW,
     strategy: MOCK_STRATEGY,
     settings: MOCK_SETTINGS,
-    isLoading: false,
+    isLoading: true,
     error: null,
-  };
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [companyRes, agentsRes, issuesRes, profileRes, checklistRes] = await Promise.all([
+          fetch(`/api/companies/${companyId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/companies/${companyId}/agents`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`/api/companies/${companyId}/issues?limit=100`).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetch(`/api/companies/${companyId}/plugin-company/profile`).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/companies/${companyId}/plugin-company/checklist`).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        if (cancelled) return;
+
+        const co = companyRes;
+        const agents: any[] = agentsRes ?? [];
+        const issues: any[] = issuesRes ?? [];
+        const profile = profileRes;
+
+        // Build overview from real data
+        const overview: OverviewData = {
+          hero: {
+            id: co?.id || companyId,
+            monogram: (co?.name || "CO").slice(0, 2).toUpperCase(),
+            name: co?.name || "Company",
+            description: co?.description || profile?.description || "",
+            isOnline: true,
+            isActive: co?.status === "active",
+          },
+          kpis: {
+            teamTotal: agents.length,
+            teamWorking: agents.filter((a: any) => a.status === "active" || a.status === "running").length,
+            tasksDone: issues.filter((i: any) => i.status === "done").length,
+            tasksOpen: issues.filter((i: any) => i.status !== "done" && i.status !== "archived").length,
+            tasksBlocked: 0,
+            creditsRemaining: 15.25, // TODO: from plugin-payments
+            creditsSpent: 4.75,
+            approvalsPending: 0,
+            approvalsStale: 0,
+          },
+          revenueConnected: false,
+          aiUsage: {
+            totalSpent: 4.75,
+            window: "Last 60 min",
+            bucket: "Minute",
+            breakdown: [{ label: "Chat Tokens", credits: 4.75 }],
+            hasData: false,
+          },
+          team: agents.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            department: a.role || a.runtimeConfig?.department || "engineering",
+          })),
+          apps: [], // TODO: from plugin-apps-builder
+        };
+
+        // Strategy from profile or mock
+        const strategy: StrategyData = profile ? {
+          positioning: profile.positioning || MOCK_STRATEGY.positioning,
+          targetAudience: profile.targetAudience || MOCK_STRATEGY.targetAudience,
+          coreStrategy: profile.strategyText || MOCK_STRATEGY.coreStrategy,
+          activePlans: MOCK_STRATEGY.activePlans,
+          goalsCount: 0,
+        } : MOCK_STRATEGY;
+
+        // Settings from company + profile
+        const settings: SettingsGeneralData = {
+          logoUrl: null,
+          monogram: (co?.name || "CO").slice(0, 2).toUpperCase(),
+          name: co?.name || "",
+          description: co?.description || profile?.description || "",
+          boardApprovalRequired: co?.requireBoardApprovalForNewAgents ?? true,
+          incorporated: profile?.incorporated ?? false,
+        };
+
+        setData({ overview, strategy, settings, isLoading: false, error: null });
+      } catch (err) {
+        if (!cancelled) setData(prev => ({ ...prev, isLoading: false, error: err as Error }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  return data;
 }

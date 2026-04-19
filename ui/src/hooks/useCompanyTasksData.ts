@@ -79,37 +79,16 @@ export function reviewToCard(row: PendingReviewWithIssue): KanbanCard {
   };
 }
 
-// TODO(A-08): swap each of these for `useQuery` against the lifecycle
-// widget payload endpoint. Today the structure is the same shape the
-// real query returns, so the kanban renders without a refactor.
-const STUB_IN_PROGRESS: readonly KanbanCard[] = [];
-const STUB_QUEUED: readonly KanbanCard[] = [
-  {
-    id: "stub-task-1",
+function issueToCard(issue: any): KanbanCard {
+  return {
+    id: issue.id,
     kind: "task",
-    title: "Build company x landing page",
-    identifier: "COMPANY-4",
-    assigneeLabel: "Landing Page Engineer",
+    title: issue.title || "Untitled",
+    identifier: issue.identifier || null,
+    assigneeLabel: issue.assigneeName || issue.assigneeAgentId?.slice(0, 8) || null,
     reviewId: null,
-  },
-  {
-    id: "stub-task-2",
-    kind: "task",
-    title: "Create GTM Plan for company x",
-    identifier: "COMPANY-2",
-    assigneeLabel: "Growth Marketer",
-    reviewId: null,
-  },
-  {
-    id: "stub-task-3",
-    kind: "task",
-    title: "Write First Blog Post",
-    identifier: "COMPANY-3",
-    assigneeLabel: "Growth Marketer",
-    reviewId: null,
-  },
-];
-const STUB_COMPLETED: readonly KanbanCard[] = [];
+  };
+}
 
 export function useCompanyTasksData(companyId: string): CompanyTasksData {
   const queryClient = useQueryClient();
@@ -143,6 +122,23 @@ export function useCompanyTasksData(companyId: string): CompanyTasksData {
     ...decideOptions,
   });
 
+  // Fetch all issues for this company and categorize by status
+  const issuesQuery = useQuery({
+    queryKey: ["company-issues", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/companies/${companyId}/issues?limit=100`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: companyId.length > 0,
+    staleTime: 5_000,
+  });
+
+  const allIssues: any[] = issuesQuery.data ?? [];
+  const inProgressCards = allIssues.filter((i) => i.status === "in_progress").map(issueToCard);
+  const queuedCards = allIssues.filter((i) => i.status === "backlog" || i.status === "todo").map(issueToCard);
+  const completedCards = allIssues.filter((i) => i.status === "done").map(issueToCard);
+
   const reviewCards =
     reviewsQuery.data?.reviews.map(reviewToCard) ?? [];
 
@@ -156,23 +152,23 @@ export function useCompanyTasksData(companyId: string): CompanyTasksData {
     },
     {
       id: "inProgress",
-      cards: STUB_IN_PROGRESS,
-      isStub: true,
-      isLoading: false,
+      cards: inProgressCards,
+      isStub: false,
+      isLoading: issuesQuery.isLoading,
       error: null,
     },
     {
       id: "queued",
-      cards: STUB_QUEUED,
-      isStub: true,
-      isLoading: false,
+      cards: queuedCards,
+      isStub: false,
+      isLoading: issuesQuery.isLoading,
       error: null,
     },
     {
       id: "completed",
-      cards: STUB_COMPLETED,
-      isStub: true,
-      isLoading: false,
+      cards: completedCards,
+      isStub: false,
+      isLoading: issuesQuery.isLoading,
       error: null,
     },
   ];
