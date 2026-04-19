@@ -179,7 +179,7 @@ function CompanyShellError({ error }: { error: Error }) {
       className="flex h-screen w-full items-center justify-center bg-cream text-ink p-8"
     >
       <div className="max-w-md text-center space-y-2">
-        <p className="font-medium">Couldn't load your company.</p>
+        <p className="font-medium text-ink">Couldn't load your company.</p>
         <p className="text-sm text-mist">{error.message}</p>
       </div>
     </div>
@@ -787,7 +787,7 @@ function UserMenu({
               {user.initials}
             </span>
             <span className="flex flex-col leading-tight">
-              <span className="text-sm font-medium">{user.fullName}</span>
+              <span className="text-sm font-medium text-ink">{user.fullName}</span>
               <span className="text-xs text-mist">
                 {copy.userMenu.credits(user.credits)}
               </span>

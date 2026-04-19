@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { ArrowLeft, Globe, Mail, MessageCircle, Pause, Phone as PhoneIcon, Settings as GearIcon } from "lucide-react";
+import { useState, useEffect, type ReactNode } from "react";
+import { ArrowLeft, ArrowUp, Globe, Mail, MessageCircle, Pause, Phone as PhoneIcon, Settings as GearIcon } from "lucide-react";
 import { Route, Routes, useLocation, useNavigate, useParams } from "@/lib/router";
 import { comingSoon } from "@/lib/toast-action";
 import { employeeDetail as copy } from "@/copy/employee-detail";
@@ -90,7 +90,7 @@ export function EmployeeDetail() {
       <TabStrip companyId={companyId} agentId={agentId} agent={data.agent} />
       <Routes>
         <Route index element={<ProfileTab agent={data.agent} compute={data.compute} />} />
-        <Route path="chat" element={<ChatTab agent={data.agent} />} />
+        <Route path="chat" element={<ChatTab agent={data.agent} companyId={companyId} />} />
         <Route path="browser" element={<BrowserTab data={data} />} />
         <Route path="phone" element={<PhoneTab data={data} />} />
         <Route path="workspace" element={<WorkspaceTab data={data} />} />
@@ -136,7 +136,7 @@ function DetailHeader({
           {copy.page.backToTeam}
         </button>
         <span className="text-mist">/</span>
-        <span className="font-medium">
+        <span className="font-medium text-ink">
           {agent.displayName}
           {agent.isCeo && " [CEO]"}
         </span>
@@ -436,15 +436,124 @@ function RecursiveNode({
 // Chat tab (lightweight stub — per-agent channel is a follow-on)
 // ---------------------------------------------------------------------------
 
-function ChatTab({ agent }: { agent: EmployeeAgent }) {
+function ChatTab({ agent, companyId }: { agent: EmployeeAgent; companyId: string }) {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Array<{ id: string; body: string; author: string; time: string }>>([]);
+  const [issueId, setIssueId] = useState<string | null>(null);
+
+  // Find or create a backing issue for this agent's chat
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Try to find an existing issue for this agent
+        const res = await fetch(`/api/companies/${companyId}/issues?limit=50`);
+        if (!res.ok) return;
+        const issues = await res.json();
+        const agentIssue = issues.find((i: any) => i.title?.includes(agent.displayName));
+        if (agentIssue && !cancelled) {
+          setIssueId(agentIssue.id);
+        } else if (!cancelled) {
+          // Create one
+          const cr = await fetch(`/api/companies/${companyId}/issues`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: `Chat with ${agent.displayName}` }),
+          });
+          if (cr.ok) {
+            const issue = await cr.json();
+            setIssueId(issue.id);
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [companyId, agent.displayName]);
+
+  // Fetch comments
+  useEffect(() => {
+    if (!issueId) return;
+    let cancelled = false;
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/issues/${issueId}/comments`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setMessages(data.map((c: any) => ({
+              id: c.id,
+              body: c.body || "",
+              author: c.authorName || (c.agentId ? "Agent" : "You"),
+              time: new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            })));
+          }
+        }
+      } catch {}
+    };
+    fetchComments();
+    const interval = setInterval(fetchComments, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [issueId]);
+
+  const handleSend = async () => {
+    if (!message.trim() || !issueId) return;
+    const body = message.trim();
+    setMessage("");
+    // Optimistic add
+    setMessages((prev) => [...prev, { id: `opt-${Date.now()}`, body, author: "You", time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+    try {
+      await fetch(`/api/issues/${issueId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+    } catch {}
+  };
+
   return (
     <TabShell testId="employee-tab-chat">
-      <h2 className="text-lg font-medium mb-2">
-        {copy.chat.heading.replace("{agent}", agent.displayName)}
-      </h2>
-      <p className="text-sm text-mist mb-6">{copy.chat.stubNote}</p>
-      <div className="bg-white border border-hairline rounded-2xl p-4">
-        <p className="text-sm text-mist">{copy.chat.placeholder}</p>
+      <div className="flex flex-col h-full min-h-[400px]">
+        <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+          {messages.length === 0 && (
+            <p className="text-sm text-mist text-center py-8">
+              Send a message to start a conversation with {agent.displayName}.
+            </p>
+          )}
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.author === "You" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[70%] ${msg.author === "You" ? "text-right" : ""}`}>
+                <p className="text-[11px] text-mist mb-1">
+                  <span className="font-medium text-ink">{msg.author}</span> · {msg.time}
+                </p>
+                <div className={`p-3 rounded-2xl text-sm whitespace-pre-wrap ${
+                  msg.author === "You"
+                    ? "bg-black text-white rounded-tr-sm"
+                    : "bg-cream border border-hairline rounded-tl-sm"
+                }`}>
+                  {msg.body}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border border-hairline rounded-2xl p-3 bg-white flex items-center gap-2">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder={copy.chat.placeholder}
+            className="flex-1 text-sm outline-none placeholder:text-mist/60"
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!message.trim()}
+            className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-30"
+          >
+            <ArrowUp className="size-4" />
+          </button>
+        </div>
       </div>
     </TabShell>
   );
@@ -494,7 +603,7 @@ function PhoneTab({ data }: { data: EmployeeDetailData }) {
   return (
     <TabShell testId="employee-tab-phone">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-medium">{copy.phone.heading}</h2>
+        <h2 className="text-lg font-medium text-ink">{copy.phone.heading}</h2>
         <span className="text-[10px] text-mist border border-hairline rounded px-1.5 py-0.5">
           {copy.phone.stubBadge}
         </span>
@@ -577,7 +686,7 @@ function InboxTab({ agent, inbox }: { agent: EmployeeAgent; inbox: InboxData }) 
     >
       <div className="px-8 py-6 border-b border-hairline flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium">{copy.inbox.heading}</h2>
+          <h2 className="text-lg font-medium text-ink">{copy.inbox.heading}</h2>
           <p className="text-xs text-mist mt-0.5">
             {copy.inbox.subheading(agent.displayName)}
           </p>
@@ -599,7 +708,7 @@ function InboxTab({ agent, inbox }: { agent: EmployeeAgent; inbox: InboxData }) 
               <div className="w-10 h-10 rounded-lg bg-cream border border-hairline flex items-center justify-center">
                 <Mail className="size-5 text-mist" strokeWidth={1.5} />
               </div>
-              <p className="text-sm font-medium">{copy.inbox.emptyTitle}</p>
+              <p className="text-sm font-medium text-ink">{copy.inbox.emptyTitle}</p>
               <p className="text-xs text-mist">{copy.inbox.emptyBody}</p>
             </div>
           ) : (
@@ -614,7 +723,7 @@ function InboxTab({ agent, inbox }: { agent: EmployeeAgent; inbox: InboxData }) 
           )}
         </aside>
         <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
-          <p className="text-sm font-medium">{copy.inbox.openHint}</p>
+          <p className="text-sm font-medium text-ink">{copy.inbox.openHint}</p>
           <p className="text-xs text-mist">{copy.inbox.openHintBody}</p>
         </div>
       </div>
@@ -629,7 +738,7 @@ function InboxTab({ agent, inbox }: { agent: EmployeeAgent; inbox: InboxData }) 
 function ComputeTab({ compute }: { compute: ComputeData }) {
   return (
     <TabShell testId="employee-tab-compute">
-      <h2 className="text-lg font-medium">{copy.compute.heading}</h2>
+      <h2 className="text-lg font-medium text-ink">{copy.compute.heading}</h2>
       <p className="text-xs text-mist mt-0.5 mb-6">{copy.compute.subheading}</p>
 
       <p className="text-[10px] font-semibold uppercase tracking-wider text-mist mb-1">
@@ -686,7 +795,7 @@ function ComputeTab({ compute }: { compute: ComputeData }) {
             className="grid grid-cols-[1fr_auto_auto] gap-6 items-center px-5 py-3 border-b border-hairline text-sm last:border-b-0"
           >
             <div>
-              <p className="font-medium">{r.label}</p>
+              <p className="font-medium text-ink">{r.label}</p>
               {r.subtitle && (
                 <p className="text-[11px] text-mist">{r.subtitle}</p>
               )}
