@@ -64,8 +64,18 @@ export interface UseCompanyChatResult {
 // ---------------------------------------------------------------------------
 
 const CHAT_ISSUE_KEY_PREFIX = "company.chat.issueId.";
+const _issuePromiseCache = new Map<string, Promise<string | null>>();
 
 async function getOrCreateChatIssue(companyId: string): Promise<string | null> {
+  // Deduplicate concurrent calls for the same company
+  const cached = _issuePromiseCache.get(companyId);
+  if (cached) return cached;
+  const promise = _getOrCreateChatIssueInner(companyId);
+  _issuePromiseCache.set(companyId, promise);
+  return promise;
+}
+
+async function _getOrCreateChatIssueInner(companyId: string): Promise<string | null> {
   const storageKey = `${CHAT_ISSUE_KEY_PREFIX}${companyId}`;
   const cached = localStorage.getItem(storageKey);
 

@@ -141,7 +141,7 @@ function UserBubble({ message }: { message: ChatMessage }) {
           <span>·</span>
           <span>{formatHHMM(message.createdAt)}</span>
         </div>
-        <div className="bg-cream/70 p-3.5 rounded-2xl rounded-tr-sm text-sm border border-black/5 shadow-sm whitespace-pre-wrap">
+        <div className="bg-black text-white p-3.5 rounded-2xl rounded-tr-sm text-sm shadow-sm whitespace-pre-wrap">
           {message.body}
         </div>
       </div>
