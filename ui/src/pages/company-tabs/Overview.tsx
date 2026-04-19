@@ -1,5 +1,5 @@
 import { CreditCard, Globe } from "lucide-react";
-import { useParams } from "@/lib/router";
+import { useParams, useNavigate } from "@/lib/router";
 import { companyTabs as copy } from "@/copy/company-tabs";
 import { useCompanyTabsData, type OverviewData } from "@/hooks/useCompanyTabsData";
 
@@ -23,7 +23,7 @@ export function CompanyOverview() {
       data-testid="company-overview"
       className="flex-1 overflow-y-auto p-8 bg-cream/40 space-y-6"
     >
-      <Hero hero={data.overview.hero} />
+      <Hero hero={data.overview.hero} companyId={companyId} />
       <KpiRow kpis={data.overview.kpis} />
       <FinancialRow data={data.overview} />
       <ListsRow data={data.overview} />
@@ -37,7 +37,8 @@ export default CompanyOverview;
 // Hero
 // ---------------------------------------------------------------------------
 
-function Hero({ hero }: { hero: OverviewData["hero"] }) {
+function Hero({ hero, companyId }: { hero: OverviewData["hero"]; companyId: string }) {
+  const navigate = useNavigate();
   return (
     <section
       data-testid="overview-hero"
@@ -70,12 +71,14 @@ function Hero({ hero }: { hero: OverviewData["hero"] }) {
       <div className="flex gap-2 flex-shrink-0">
         <button
           type="button"
+          onClick={() => navigate(`/c/${companyId}/settings/general`)}
           className="border border-hairline bg-white hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors"
         >
           {copy.overview.hero.configureCta}
         </button>
         <button
           type="button"
+          onClick={() => navigate(`/c/${companyId}/`)}
           className="bg-black text-white hover:bg-neutral-800 px-4 py-2 rounded-full text-sm font-medium transition-colors"
         >
           {copy.overview.hero.chatCta}

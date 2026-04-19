@@ -2,30 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chat as chatCopy } from "@/copy/chat";
 
 /**
- * Chat thread state for C-04. Today every message comes from a local seed
- * and user-sends produce a stubbed agent reply on a short delay. When A-06
- * (heartbeat/check-in system-message emitter) merges, three swap points
- * replace the stub:
+ * Chat thread state for C-04, now wired to Paperclip's issue/comment API.
  *
- *   1. `useChatMessages` → `useQuery({ queryKey: ['chat', companyId], ... })`
- *      fetching the company's backing issue thread (tickets/comments).
- *   2. The 300ms `setTimeout` reply is replaced by a WebSocket/SSE
- *      subscription that appends server-emitted messages (including "via
- *      check-in" system posts from A-06's run-lifecycle hook).
- *   3. `sendMessage` posts to the backend rather than mutating local state.
- *
- * All three are tagged `TODO(A-06)` in-file so the seam is grep-able.
+ * Flow:
+ *   1. On mount, find or create a backing issue for the company chat.
+ *   2. Fetch comments from that issue → render as messages.
+ *   3. User sends → POST comment → refetch.
+ *   4. Poll every 3s for new comments (real-time WebSocket is Phase 2).
  */
 
 export type ChatAuthorKind = "user" | "agent" | "system";
 
 export interface ChatAgentAuthor {
   kind: "agent";
-  /** Stable agent id — e.g. `agent-ceo` — used for @mention matching. */
   id: string;
-  /** Display name rendered in the bubble label. */
   displayName: string;
-  /** "ceo" | "engineering" | "marketing" | … — source of the avatar flavor. */
   department: string;
 }
 
@@ -36,7 +27,6 @@ export interface ChatUserAuthor {
 
 export interface ChatSystemAuthor {
   kind: "system";
-  /** Agent that emitted the check-in (usually the CEO). */
   displayName: string;
   via: "check-in";
 }
@@ -58,10 +48,8 @@ export interface MentionableAgent {
 
 export interface UseCompanyChatOptions {
   companyId: string;
-  /** Agents the composer can @mention. */
   mentionable: readonly MentionableAgent[];
   currentUserDisplayName: string;
-  /** Override for tests to make the stub reply deterministic. */
   replyDelayMs?: number;
 }
 
@@ -72,71 +60,146 @@ export interface UseCompanyChatResult {
 }
 
 // ---------------------------------------------------------------------------
+// Backing issue management — one persistent chat issue per company
+// ---------------------------------------------------------------------------
 
-function seedMessages(): ChatMessage[] {
-  const base = new Date("2026-04-17T12:15:00Z").getTime();
-  const at = (offsetMin: number) => new Date(base + offsetMin * 60_000);
-  return [
-    {
-      id: "seed-1",
-      author: {
-        kind: "agent",
-        id: "agent-gm",
-        displayName: "Growth Marketer",
-        department: "marketing",
-      },
-      body: chatCopy.seed.growthMarketerAck,
-      createdAt: at(0),
-    },
-    {
-      id: "seed-2",
-      // TODO(A-06): this is a "via check-in" system message from the CEO.
-      // A-06's run-lifecycle hook replaces it with a real post from the
-      // agent-runtime error-recovery path.
-      author: { kind: "system", displayName: "Naive", via: "check-in" },
-      body: chatCopy.seed.ceoRecovery,
-      createdAt: at(3),
-    },
-    {
-      id: "seed-3",
-      author: { kind: "agent", id: "agent-ceo", displayName: "Naive", department: "ceo" },
-      body: chatCopy.seed.ceoFollowup,
-      createdAt: at(3),
-    },
-    {
-      id: "seed-4",
-      author: { kind: "system", displayName: "Naive", via: "check-in" },
-      body: chatCopy.seed.ceoResolution,
-      createdAt: at(6),
-    },
-    {
-      id: "seed-5",
-      author: { kind: "system", displayName: "Naive", via: "check-in" },
-      body: chatCopy.seed.ceoLpe,
-      createdAt: at(8),
-    },
-  ];
+const CHAT_ISSUE_KEY_PREFIX = "company.chat.issueId.";
+
+async function getOrCreateChatIssue(companyId: string): Promise<string | null> {
+  const storageKey = `${CHAT_ISSUE_KEY_PREFIX}${companyId}`;
+  const cached = localStorage.getItem(storageKey);
+
+  // Verify cached issue still exists
+  if (cached) {
+    try {
+      const res = await fetch(`/api/issues/${cached}`);
+      if (res.ok) return cached;
+    } catch {}
+    localStorage.removeItem(storageKey);
+  }
+
+  // Find existing issues for this company
+  try {
+    const res = await fetch(`/api/companies/${companyId}/issues?limit=50`);
+    if (res.ok) {
+      const issues = await res.json();
+      if (Array.isArray(issues) && issues.length > 0) {
+        // Use the first active issue as the chat backing
+        const active = issues.find((i: any) => i.status !== "done" && i.status !== "archived");
+        const issueId = active?.id || issues[0].id;
+        localStorage.setItem(storageKey, issueId);
+        return issueId;
+      }
+    }
+  } catch {}
+
+  // Create a new chat issue
+  try {
+    const res = await fetch(`/api/companies/${companyId}/issues`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Company Chat",
+        description: "Persistent chat thread for this company.",
+      }),
+    });
+    if (res.ok) {
+      const issue = await res.json();
+      localStorage.setItem(storageKey, issue.id);
+      return issue.id;
+    }
+  } catch {}
+
+  return null;
 }
 
+// ---------------------------------------------------------------------------
+// Comment → ChatMessage mapper
+// ---------------------------------------------------------------------------
+
+function commentToMessage(comment: any): ChatMessage {
+  let author: ChatAuthor;
+  if (comment.authorType === "agent" || comment.agentId) {
+    const isCheckIn = comment.body?.includes("via check-in") ||
+                      comment.metadata?.via === "check-in";
+    if (isCheckIn) {
+      author = {
+        kind: "system",
+        displayName: comment.authorName || comment.agentName || "Naive",
+        via: "check-in",
+      };
+    } else {
+      author = {
+        kind: "agent",
+        id: comment.agentId || comment.authorId || "unknown",
+        displayName: comment.authorName || comment.agentName || "Agent",
+        department: comment.metadata?.department || "ceo",
+      };
+    }
+  } else {
+    author = {
+      kind: "user",
+      displayName: comment.authorName || "You",
+    };
+  }
+
+  return {
+    id: comment.id,
+    author,
+    body: comment.body || "",
+    createdAt: new Date(comment.createdAt),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 export function useCompanyChat(options: UseCompanyChatOptions): UseCompanyChatResult {
-  const { currentUserDisplayName, replyDelayMs = 300 } = options;
-  const [messages, setMessages] = useState<ChatMessage[]>(() => seedMessages());
+  const { companyId, currentUserDisplayName } = options;
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [issueId, setIssueId] = useState<string | null>(null);
   const [isStubReplyPending, setIsStubReplyPending] = useState(false);
-  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Resolve backing issue on mount
+  useEffect(() => {
+    let cancelled = false;
+    getOrCreateChatIssue(companyId).then((id) => {
+      if (!cancelled && id) setIssueId(id);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  // Fetch comments when issueId is resolved, then poll every 3s
+  const fetchComments = useCallback(async () => {
+    if (!issueId) return;
+    try {
+      const res = await fetch(`/api/issues/${issueId}/comments`);
+      if (res.ok) {
+        const comments = await res.json();
+        if (Array.isArray(comments)) {
+          setMessages(comments.map(commentToMessage));
+        }
+      }
+    } catch {}
+  }, [issueId]);
 
   useEffect(() => {
+    if (!issueId) return;
+    fetchComments();
+    pollRef.current = setInterval(fetchComments, 3000);
     return () => {
-      if (pendingTimer.current !== null) {
-        clearTimeout(pendingTimer.current);
-        pendingTimer.current = null;
-      }
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, []);
+  }, [issueId, fetchComments]);
 
   const sendMessage = useCallback(
-    (rawBody: string) => {
+    async (rawBody: string) => {
       const body = rawBody.trim();
-      if (body.length === 0) return;
+      if (body.length === 0 || !issueId) return;
+
+      // Optimistic local add
       const now = new Date();
       const userMsg: ChatMessage = {
         id: `user-${now.getTime()}`,
@@ -147,32 +210,24 @@ export function useCompanyChat(options: UseCompanyChatOptions): UseCompanyChatRe
       setMessages((prev) => [...prev, userMsg]);
       setIsStubReplyPending(true);
 
-      // TODO(A-06): the stubbed setTimeout reply is a placeholder for the
-      // real message-stream subscription. When the run-lifecycle emits a
-      // response (or a "via check-in" system post), that arrives over the
-      // same stream and replaces this mock.
-      if (pendingTimer.current !== null) {
-        clearTimeout(pendingTimer.current);
+      // POST to the real API
+      try {
+        await fetch(`/api/issues/${issueId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body }),
+        });
+      } catch {
+        // Comment failed — the optimistic message stays for now
       }
-      pendingTimer.current = setTimeout(() => {
-        pendingTimer.current = null;
-        const replyTime = new Date();
-        const reply: ChatMessage = {
-          id: `reply-${replyTime.getTime()}`,
-          author: {
-            kind: "agent",
-            id: "agent-ceo",
-            displayName: "Naive",
-            department: "ceo",
-          },
-          body: chatCopy.stubReply(currentUserDisplayName),
-          createdAt: replyTime,
-        };
-        setMessages((prev) => [...prev, reply]);
+
+      // Refetch after a beat to pick up the server-side comment + any agent reply
+      setTimeout(() => {
+        fetchComments();
         setIsStubReplyPending(false);
-      }, replyDelayMs);
+      }, 1000);
     },
-    [currentUserDisplayName, replyDelayMs],
+    [issueId, currentUserDisplayName, fetchComments],
   );
 
   return useMemo(
@@ -182,29 +237,16 @@ export function useCompanyChat(options: UseCompanyChatOptions): UseCompanyChatRe
 }
 
 // ---------------------------------------------------------------------------
-// Mention autocomplete helper — shared between composer + test.
+// Mention autocomplete helper
 // ---------------------------------------------------------------------------
 
 export interface MentionMatch {
-  /** Where the current `@query` starts in the textarea value. */
   triggerStart: number;
-  /** Character-wise query after the `@`, lowercased for comparison. */
   query: string;
 }
 
-/**
- * Return the active `@query` substring anchored at the caret, if any.
- * Called on every composer input event to decide whether to show the
- * mention popover. Returns null when the caret isn't inside a mention.
- */
-export function detectMentionAt(
-  text: string,
-  caret: number,
-): MentionMatch | null {
+export function detectMentionAt(text: string, caret: number): MentionMatch | null {
   if (caret < 0 || caret > text.length) return null;
-  // Walk back from the caret looking for the nearest @ that isn't
-  // preceded by a word character (so emails like nicole@example.com
-  // don't trigger).
   for (let i = caret - 1; i >= 0; i -= 1) {
     const ch = text[i];
     if (ch === "@") {
