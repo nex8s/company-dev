@@ -15,6 +15,8 @@ import {
 } from "./schemas.js";
 import { completeStep, getChecklist } from "../getting-started/checklist.js";
 import { approveReview, listPendingReviews, rejectReview } from "../reviews/queue.js";
+import { seedCompanyAgents, hireAgent, findCeo, listDirectReports } from "../agents/factory.js";
+import { HIREABLE_DEPARTMENTS } from "../agents/prompts.js";
 import {
   resolveServerPanel,
   type ServerPanelResolverConfig,
@@ -371,6 +373,47 @@ export function createPluginCompanyRouter(deps: PluginCompanyRouterDeps): Router
       const query = parseBody(listPublishedTemplatesQuerySchema, req.query ?? {});
       const templates = await listPublishedTemplates(deps.db, { kind: query.kind });
       res.json({ templates });
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // Agent seeding + hiring (A-03)
+  // -------------------------------------------------------------------------
+
+  router.post(
+    "/companies/:companyId/plugin-company/seed-agents",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const result = await seedCompanyAgents(deps.db, { companyId });
+      res.json(result);
+    }),
+  );
+
+  router.post(
+    "/companies/:companyId/plugin-company/hire",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const { department, name } = req.body as { department: string; name?: string };
+      if (!department || !HIREABLE_DEPARTMENTS.includes(department as any)) {
+        res.status(400).json({ error: `department must be one of: ${HIREABLE_DEPARTMENTS.join(", ")}` });
+        return;
+      }
+      const agentName = name || `${department.charAt(0).toUpperCase() + department.slice(1)} Agent`;
+      const agent = await hireAgent(deps.db, { companyId, department: department as any, name: agentName });
+      res.json(agent);
+    }),
+  );
+
+  router.get(
+    "/companies/:companyId/plugin-company/team",
+    asyncHandler(async (req, res) => {
+      const { companyId } = parseParams(companyIdParamSchema, req.params);
+      deps.authorizeCompanyAccess(req, companyId);
+      const ceo = await findCeo(deps.db, companyId);
+      const reports = ceo ? await listDirectReports(deps.db, companyId) : [];
+      res.json({ ceo, reports });
     }),
   );
 
