@@ -21,10 +21,8 @@ export const chat = {
   },
 
   tools: {
-    // "Naive" here is the CEO default name from plugin-company's
-    // CEO_DEFAULT_NAME — not the reference brand. Kept as a template so
-    // it tracks CompanyShellData.ceo.displayName automatically.
-    strip: (ceoName: string) => `Connect your tools to ${ceoName}`,
+    // Brand footer below the composer — always shows the product name.
+    strip: (_ceoName: string) => `Connect your tools to Company.dev`,
   },
 
   viaCheckIn: "via check-in",

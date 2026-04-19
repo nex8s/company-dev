@@ -51,7 +51,7 @@ export function CompanySettingsTab() {
       className="flex-1 overflow-y-auto bg-cream/40 p-8"
     >
       <div className="max-w-3xl w-full mx-auto space-y-10 pb-20">
-        <h1 className="text-2xl font-medium tracking-wide">{copy.settings.heading}</h1>
+        <h1 className="text-2xl font-medium tracking-wide text-ink">{copy.settings.heading}</h1>
         <InnerTabStrip companyId={companyId} />
         <Routes>
           <Route index element={<SettingsGeneral />} />
@@ -313,7 +313,7 @@ function DangerZone({ companyName }: { companyName: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Settings > Server (matches usenaive.ai "Not Provisioned" initial state)
+// Settings > Server (matches usecompanydev.com "Not Provisioned" initial state)
 // ---------------------------------------------------------------------------
 
 function SettingsServer() {

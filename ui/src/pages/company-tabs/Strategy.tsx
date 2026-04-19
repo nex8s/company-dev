@@ -25,7 +25,7 @@ export function CompanyStrategy() {
       data-testid="company-strategy"
       className="flex-1 overflow-y-auto p-8 bg-cream/40 space-y-6"
     >
-      <h2 className="text-lg font-medium border-b border-hairline pb-2">
+      <h2 className="text-lg font-medium border-b border-hairline pb-2 text-ink">
         {copy.strategy.heading}
       </h2>
 

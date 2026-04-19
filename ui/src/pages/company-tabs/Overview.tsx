@@ -50,7 +50,7 @@ function Hero({ hero, companyId }: { hero: OverviewData["hero"]; companyId: stri
         </div>
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl tracking-wide">{hero.name}</h1>
+            <h1 className="text-2xl tracking-wide text-ink">{hero.name}</h1>
             {hero.isActive && (
               <span className="bg-amber-400 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                 {copy.overview.hero.activeBadge}
