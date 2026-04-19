@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import { useState } from "react";
+import { comingSoon } from "@/lib/toast-action";
 import {
   ArrowUpRight,
   Building2,
@@ -306,6 +307,7 @@ function CompanySwitcher({
         <div className="h-px bg-hairline my-1 mx-2" />
         <button
           type="button"
+          onClick={() => comingSoon("Add Company")}
           className="w-full text-left px-3 py-2 text-sm text-mist hover:bg-black/5 rounded-md flex items-center gap-2"
         >
           <Plus className="size-4" />
@@ -364,6 +366,7 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
         <div className="flex items-center gap-1 px-2 pt-1 pb-2 text-[11px]">
           <button
             type="button"
+            onClick={() => comingSoon("Review Tasks filter")}
             className="px-2 py-0.5 rounded-md bg-white/15"
           >
             {copy.reviewPill.tabs.tasks}{" "}
@@ -371,6 +374,7 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
           </button>
           <button
             type="button"
+            onClick={() => comingSoon("Review Agents filter")}
             className="px-2 py-0.5 rounded-md text-white/60 hover:text-white"
           >
             {copy.reviewPill.tabs.agents}
@@ -402,6 +406,7 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
                   <div className="flex gap-1.5">
                     <button
                       type="button"
+                      onClick={() => comingSoon("Reject review")}
                       className="flex-1 px-2 py-1 rounded-md bg-red-500/20 text-red-300 text-[10px] flex items-center justify-center gap-1"
                     >
                       <X className="size-3" />
@@ -409,6 +414,7 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
                     </button>
                     <button
                       type="button"
+                      onClick={() => comingSoon("Approve review")}
                       className="flex-1 px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] flex items-center justify-center gap-1"
                     >
                       <Check className="size-3" />
@@ -422,6 +428,7 @@ function ReviewPill({ pending }: { pending: CompanyShellPendingReview[] }) {
         )}
         <button
           type="button"
+          onClick={() => comingSoon("Open all reviews")}
           className="w-full text-center py-2 text-[11px] text-white/60 hover:text-white border-t border-white/10 mt-1"
         >
           {copy.reviewPill.openAll}
@@ -814,20 +821,20 @@ function UserMenu({
           <PlusCircle className="size-4 text-mist" />
           {copy.userMenu.topUpCredits}
         </UserMenuItem>
-        <UserMenuItem>
+        <UserMenuItem onClick={() => comingSoon("Emoji & Icons")}>
           <SmilePlus className="size-4 text-mist" />
           {copy.userMenu.emojiIcons}
         </UserMenuItem>
-        <UserMenuItem>
+        <UserMenuItem onClick={() => navigate(`/c/${companyId}/settings`)}>
           <Settings className="size-4 text-mist" />
           {copy.userMenu.settings}
         </UserMenuItem>
         <div className="h-px bg-hairline my-1 mx-2" />
-        <UserMenuItem>
+        <UserMenuItem onClick={() => comingSoon("Support")}>
           <LifeBuoy className="size-4" />
           {copy.userMenu.support}
         </UserMenuItem>
-        <UserMenuItem>
+        <UserMenuItem onClick={() => comingSoon("Sign out")}>
           <LogIn className="size-4" />
           {copy.userMenu.signOut}
           <ArrowUpRight className="size-3 ml-auto" />

@@ -1,5 +1,6 @@
 import { CreditCard, Globe, Layers, LayoutGrid } from "lucide-react";
 import { Route, Routes, useLocation, useNavigate, useParams } from "@/lib/router";
+import { comingSoon } from "@/lib/toast-action";
 import { companyTabs as copy } from "@/copy/company-tabs";
 import {
   useCompanyTabsData,
@@ -157,6 +158,7 @@ function ProfileSection({ settings }: { settings: SettingsGeneralData }) {
             </h4>
             <button
               type="button"
+              onClick={() => comingSoon("Logo Upload")}
               className="border border-hairline hover:bg-black/5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
             >
               {copy.settings.general.logoUploadCta}
@@ -240,6 +242,7 @@ function ToggleRow({
         role="switch"
         aria-checked={on}
         aria-label={label}
+        onClick={() => comingSoon(label)}
         className={`w-9 h-5 rounded-full relative flex-shrink-0 transition-colors ${
           on ? "bg-emerald-500" : "bg-gray-200 border border-hairline"
         }`}
@@ -299,6 +302,7 @@ function DangerZone({ companyName }: { companyName: string }) {
         </p>
         <button
           type="button"
+          onClick={() => comingSoon(`Delete ${companyName}`)}
           className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-xs font-medium transition-colors shadow-sm"
         >
           {copy.settings.general.dangerZone.cta(companyName)}
@@ -332,7 +336,7 @@ function SettingsServer() {
           </div>
         </div>
         <div className="border-t border-hairline mt-4 pt-4 flex items-center gap-3">
-          <button className="bg-ink text-white hover:bg-ink/90 px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
+          <button type="button" onClick={() => comingSoon("Start Server")} className="bg-ink text-white hover:bg-ink/90 px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
             </svg>

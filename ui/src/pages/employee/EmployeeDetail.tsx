@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, Globe, Mail, MessageCircle, Pause, Phone as PhoneIcon, Settings as GearIcon } from "lucide-react";
 import { Route, Routes, useLocation, useNavigate, useParams } from "@/lib/router";
+import { comingSoon } from "@/lib/toast-action";
 import { employeeDetail as copy } from "@/copy/employee-detail";
 import {
   useEmployeeDetailData,
@@ -232,6 +233,8 @@ function ProfileTab({
 }
 
 function HeroCard({ agent }: { agent: EmployeeAgent }) {
+  const navigate = useNavigate();
+  const { companyId = "", agentId = "" } = useParams<{ companyId: string; agentId: string }>();
   return (
     <div
       data-testid="profile-hero"
@@ -255,6 +258,7 @@ function HeroCard({ agent }: { agent: EmployeeAgent }) {
         <div className="flex gap-2 flex-shrink-0">
           <button
             type="button"
+            onClick={() => comingSoon("Configure")}
             className="border border-hairline bg-white hover:bg-black/5 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
           >
             <GearIcon className="size-4" strokeWidth={1.5} />
@@ -262,6 +266,7 @@ function HeroCard({ agent }: { agent: EmployeeAgent }) {
           </button>
           <button
             type="button"
+            onClick={() => navigate(`/c/${companyId}/team/${agentId}/chat`)}
             className="bg-black text-white hover:bg-neutral-800 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
           >
             <MessageCircle className="size-4" strokeWidth={1.5} />
@@ -463,6 +468,7 @@ function BrowserTab({ data }: { data: EmployeeDetailData }) {
           </p>
           <button
             type="button"
+            onClick={() => comingSoon("Start Browser Session")}
             className="mt-2 bg-black text-white hover:bg-neutral-800 px-4 py-2 rounded-full text-xs font-medium"
           >
             {copy.browser.startCta}
@@ -505,6 +511,7 @@ function PhoneTab({ data }: { data: EmployeeDetailData }) {
           <p className="text-xs text-mist max-w-md">{copy.phone.emptyBody}</p>
           <button
             type="button"
+            onClick={() => comingSoon("Claim Phone Number")}
             className="mt-2 bg-black text-white hover:bg-neutral-800 px-4 py-2 rounded-full text-xs font-medium"
           >
             {copy.phone.claimCta}
@@ -644,6 +651,7 @@ function ComputeTab({ compute }: { compute: ComputeData }) {
             </span>
             <button
               type="button"
+              onClick={() => comingSoon("Pause Compute")}
               className="border border-hairline hover:bg-black/5 px-3 py-1 rounded-full text-xs flex items-center gap-1.5"
             >
               <Pause className="size-3" strokeWidth={1.5} />
@@ -727,6 +735,7 @@ function SettingsTab({ agent }: { agent: EmployeeAgent }) {
         <p className="text-xs text-red-600 mb-4">{copy.settings.dangerBody}</p>
         <button
           type="button"
+          onClick={() => comingSoon(`Delete ${agent.displayName}`)}
           className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-xs font-medium shadow-sm"
         >
           {copy.settings.dangerCta(agent.displayName)}
