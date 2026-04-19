@@ -401,8 +401,13 @@ export function createPluginCompanyRouter(deps: PluginCompanyRouterDeps): Router
         return;
       }
       const agentName = name || `${department.charAt(0).toUpperCase() + department.slice(1)} Agent`;
-      const agent = await hireAgent(deps.db, { companyId, department: department as any, name: agentName });
-      res.json(agent);
+      try {
+        const agent = await hireAgent(deps.db, { companyId, department: department as any, name: agentName });
+        res.json(agent);
+      } catch (hireErr: any) {
+        console.error("[plugin-company] hireAgent failed:", hireErr);
+        res.status(500).json({ error: hireErr.message || "Failed to hire agent" });
+      }
     }),
   );
 
